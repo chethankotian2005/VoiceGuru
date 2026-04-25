@@ -53,23 +53,41 @@ def _initialize_firebase_app() -> Any:
     if firebase_admin is None or credentials is None or firestore is None:
         return None
 
-    credentials_path = _credentials_path()
-    if not credentials_path or not os.path.exists(credentials_path):
+    env_val = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
+    if not env_val:
         return None
 
     with _firebase_lock:
         try:
-            if _firebase_app is not None:
-                return _firebase_app
-            _firebase_app = firebase_admin.get_app()
-            return _firebase_app
-        except Exception:
+            # Check if already initialized
             try:
-                cred = credentials.Certificate(credentials_path)
-                _firebase_app = firebase_admin.initialize_app(cred)
+                if _firebase_app is None:
+                    _firebase_app = firebase_admin.get_app()
                 return _firebase_app
             except Exception:
-                return None
+                pass
+
+            # Handle JSON content or File Path
+            if env_val.startswith('{'):
+                # It's raw JSON content
+                import json
+                cred_dict = json.loads(env_val)
+                cred = credentials.Certificate(cred_dict)
+            else:
+                # It's a file path
+                if not os.path.exists(env_val):
+                    # Try looking one level up just in case (Render root directory issue)
+                    alt_path = os.path.join("..", env_val)
+                    if os.path.exists(alt_path):
+                        env_val = alt_path
+                    else:
+                        return None
+                cred = credentials.Certificate(env_val)
+
+            _firebase_app = firebase_admin.initialize_app(cred)
+            return _firebase_app
+        except Exception:
+            return None
 
 
 def _get_firestore_client() -> Any:
