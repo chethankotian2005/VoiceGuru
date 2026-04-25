@@ -8,13 +8,20 @@ ENV/
 env/
 .env
 
-# Firebase
+# Firebase / Google Credentials
 *.json
 !firebase.json
+!pubspec.json
+!package.json
+!google-services.json # If you need this for builds, but usually better to ignore
+*.plist
+!Info.plist
+!GoogleService-Info.plist # If you need this for builds
 
 # IDEs
 .vscode/
 .idea/
+*.iml
 
 # Flutter/Dart
 build/
@@ -24,6 +31,13 @@ build/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
+
+# Android
+.gradle/
+.gradle_tmp/
+local.properties
+*.keystore
+*.jks
 android/app/debug/
 android/app/profile/
 android/app/release/

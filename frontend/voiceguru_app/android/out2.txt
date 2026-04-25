@@ -1,0 +1,24 @@
+> Task :gradle:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle:compileKotlin UP-TO-DATE
+> Task :gradle:compileJava NO-SOURCE
+> Task :gradle:compileGroovy NO-SOURCE
+> Task :gradle:pluginDescriptors UP-TO-DATE
+> Task :gradle:processResources UP-TO-DATE
+> Task :gradle:classes UP-TO-DATE
+> Task :gradle:jar UP-TO-DATE
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Could not resolve all artifacts for configuration 'classpath'.
+> Failed to transform gradle-1.0.0.jar (project :gradle) to match attributes {artifactType=jar, org.gradle.category=library, org.gradle.dependency.bundling=external, org.gradle.internal.instrumented=instrumented-only, org.gradle.jvm.environment=standard-jvm, org.gradle.jvm.version=11, org.gradle.libraryelements=jar, org.gradle.usage=java-runtime, org.jetbrains.kotlin.platform.type=jvm}.
+   > Could not read workspace metadata from C:\Users\chethan kotian\.gradle\caches\8.14\transforms\4a858389c02c0d258c2269c489126e6a\metadata.bin
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1s
+4 actionable tasks: 4 up-to-date
