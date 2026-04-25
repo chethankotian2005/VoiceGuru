@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+google-genai
+google-cloud-texttospeech
+google-cloud-speech
+firebase-admin
+python-dotenv
+httpx
+cachetools
