@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from cachetools import TTLCache
 from google import genai
 import httpx
+from twilio.rest import Client as TwilioClient
 from dotenv import load_dotenv
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -287,9 +288,11 @@ def _tts_language_code(language: str) -> str:
     return mapping.get((language or "").strip().lower(), "en-IN-Wavenet-A")
 
 
-# --------------- WhatsApp Reporting ---------------
+# --------------- WhatsApp Reporting (Twilio) ---------------
 
-CALLMEBOT_API = "https://api.callmebot.com/whatsapp.php"
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER", "whatsapp:+14155238886")
 
 async def generate_parent_report(child_id: str, child_name: str, language: str) -> str:
     from firebase_logger import get_weekly_summary
@@ -313,24 +316,38 @@ Sound like a helpful teacher writing to a parent. No technical jargon. No markdo
     )
     return response.text.strip()
 
-async def send_whatsapp_report(phone: str, child_name: str, child_id: str, api_key: str, language: str = "english") -> bool:
+async def send_whatsapp_report(phone: str, child_name: str, child_id: str, language: str = "english") -> bool:
     try:
+        if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN:
+            print("Twilio credentials missing")
+            return False
+
         # Generate report text using Gemini
         report = await generate_parent_report(child_id, child_name, language)
         
         # Add dashboard link
         dashboard_url = f"https://voiceguru-backend.onrender.com/dashboard/{child_id}/report"
         
-        message = f"📚 *VoiceGuru Weekly Report*\n\n{report}\n\n🔗 View full report: {dashboard_url}\n\n_Powered by VoiceGuru - AI Tutor_"
+        message_body = f"📚 *VoiceGuru Weekly Report*\n\n{report}\n\n🔗 View full report: {dashboard_url}\n\n_Powered by VoiceGuru - AI Tutor_"
         
-        encoded_message = urllib.parse.quote(message)
-        url = f"{CALLMEBOT_API}?phone={phone}&text={encoded_message}&apikey={api_key}"
+        # Format phone for Twilio (ensure it starts with whatsapp:)
+        to_number = phone if phone.startswith("whatsapp:") else f"whatsapp:{phone}"
         
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, timeout=15.0)
-            return response.status_code == 200
+        # Twilio SDK is synchronous, so we run in a thread
+        def _send():
+            client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+            message = client.messages.create(
+                from_=TWILIO_WHATSAPP_NUMBER,
+                body=message_body,
+                to=to_number
+            )
+            return message.sid
+
+        sid = await asyncio.to_thread(_send)
+        print(f"WhatsApp sent via Twilio! SID: {sid}")
+        return True
     except Exception as e:
-        print(f"WhatsApp send error: {e}")
+        print(f"Twilio WhatsApp send error: {e}")
         return False
 
 
@@ -409,7 +426,6 @@ async def api_send_parent_report(payload: ParentReportRequest):
         phone=payload.parent_phone,
         child_name=payload.child_name,
         child_id=payload.child_id,
-        api_key=payload.callmebot_api_key,
         language=payload.language
     )
     return {"sent": success, "message": "Report delivered to parent" if success else "Failed to deliver report"}
@@ -426,7 +442,6 @@ async def trigger_weekly_reports():
             phone=child["parent_phone"],
             child_name=child["name"],
             child_id=child["child_id"],
-            api_key=child["callmebot_api_key"],
             language=child.get("language", "english")
         )
         if success:

@@ -21,7 +21,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late String _selectedBoard;
   late String _selectedLanguage;
   late TextEditingController _parentPhoneController;
-  late TextEditingController _callmebotKeyController;
   bool _reportSent = false;
   bool _isSendingReport = false;
 
@@ -44,7 +43,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _selectedBoard = langProv.board;
     _selectedLanguage = langProv.language;
     _parentPhoneController = TextEditingController();
-    _callmebotKeyController = TextEditingController();
     _loadParentData();
   }
 
@@ -52,7 +50,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _parentPhoneController.text = prefs.getString('parent_phone') ?? '';
-      _callmebotKeyController.text = prefs.getString('callmebot_key') ?? '';
     });
   }
 
@@ -60,7 +57,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void dispose() {
     _nameController.dispose();
     _parentPhoneController.dispose();
-    _callmebotKeyController.dispose();
     super.dispose();
   }
 
@@ -98,11 +94,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _sendTestReport() async {
     final phone = _parentPhoneController.text.trim();
-    final key = _callmebotKeyController.text.trim();
 
-    if (phone.isEmpty || key.isEmpty) {
+    if (phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter phone and API key')),
+        const SnackBar(content: Text('Please enter a WhatsApp number')),
       );
       return;
     }
@@ -117,14 +112,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         childId: langProv.childId,
         childName: langProv.childName,
         parentPhone: phone,
-        apiKey: key,
+        apiKey: "twilio_managed", // Dummy value for model compatibility
         language: langProv.language,
       );
 
       if (response['sent'] == true) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('parent_phone', phone);
-        await prefs.setString('callmebot_key', key);
         
         setState(() => _reportSent = true);
         Future.delayed(const Duration(seconds: 5), () {
@@ -510,17 +504,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           labelText: "Parent's WhatsApp (with +country)",
                           hintText: "+91XXXXXXXXXX",
                           prefixIcon: const Icon(Icons.phone_iphone, size: 20),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _callmebotKeyController,
-                        decoration: InputDecoration(
-                          labelText: "CallMeBot API Key",
-                          hintText: "Get at callmebot.com",
-                          prefixIcon: const Icon(Icons.key_outlined, size: 20),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         ),
