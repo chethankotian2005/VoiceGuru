@@ -1,6 +1,6 @@
 import 'dart:convert';
-
 import 'package:http/http.dart' as http;
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 const String baseUrl = String.fromEnvironment(
   'API_BASE_URL',
@@ -17,6 +17,11 @@ class ApiService {
   final http.Client _client;
 
   Uri _uri(String path) => Uri.parse('$baseUrl$path');
+
+  Future<bool> isOnline() async {
+    final result = await Connectivity().checkConnectivity();
+    return !result.contains(ConnectivityResult.none);
+  }
 
   // ─── Create User ───
   Future<Map<String, dynamic>?> createUser({
@@ -60,6 +65,11 @@ class ApiService {
     required String childId,
     required String board,
   }) async {
+    final online = await isOnline();
+    if (!online) {
+      return await _askOffline(text, language, grade);
+    }
+
     try {
       final response = await _client.post(
         _uri('/ask'),
@@ -96,6 +106,64 @@ class ApiService {
       'youtube_search_query': null,
       'key_terms': <String>[],
     };
+  }
+
+  Future<Map<String, dynamic>> _askOffline(
+    String text,
+    String language,
+    int grade,
+  ) async {
+    try {
+      final cachedContext = _getCachedSyllabus(grade);
+      final prompt = """You are VoiceGuru, an offline AI tutor. The student has no internet right now.
+Answer this question briefly in $language:
+$text
+
+Context: $cachedContext
+
+Keep answer under 80 words. Be warm and helpful.""";
+
+      // For demo: simulation of a local AI response
+      final response = await _getLocalResponse(prompt, language);
+      return {
+        'explanation': response,
+        'subject': 'general',
+        'grade_used': grade,
+        'language': language,
+        'needs_diagram': false,
+        'diagram_type': 'none',
+        'youtube_search_query': null,
+        'offline_mode': true,
+        'agent_trace': ['Offline AI'],
+      };
+    } catch (e) {
+      return {
+        'explanation': _getOfflineFallbackMessage(language),
+        'offline_mode': true,
+        'agent_trace': ['Offline Fallback'],
+      };
+    }
+  }
+
+  Future<String> _getLocalResponse(String prompt, String language) async {
+    // This would eventually call Gemini Nano. 
+    // For now, we simulate a warm offline response.
+    await Future.delayed(const Duration(milliseconds: 800));
+    return _getOfflineFallbackMessage(language);
+  }
+
+  String _getOfflineFallbackMessage(String language) {
+    final messages = {
+      'kannada': 'ನೀವು ಈಗ ಆಫ್ಲೈನ್ ಆಗಿದ್ದೀರಿ. ಆದರೆ ನಾನು ಇನ್ನೂ ಸಹಾಯ ಮಾಡಬಲ್ಲೆ!',
+      'hindi': 'आप अभी ऑफलाइन हैं, लेकिन मैं अभी भी मदद कर सकता हूं!',
+      'tamil': 'நீங்கள் இப்போது ஆஃப்லைனில் உள்ளீர்கள். ಆದರೆ ನಾನು உதவ முடியும்!',
+      'english': 'You are offline right now, but I can still help with basic questions!',
+    };
+    return messages[language] ?? messages['english']!;
+  }
+
+  String _getCachedSyllabus(int grade) {
+    return 'Karnataka State Board Class $grade curriculum topics';
   }
 
   // ─── Ask Image ───

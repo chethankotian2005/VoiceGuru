@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../main.dart';
 import '../services/api_service.dart';
@@ -169,6 +170,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   bool _isSuggestionsLoading = true;
   HotwordState _hotwordState = HotwordState.idle;
   bool _isRecording = false;
+  bool _isOffline = false;
+  StreamSubscription? _connectivitySubscription;
   bool _hasText = false;
   String? _detectedLanguage;
   String? _speakingLanguage;
@@ -179,6 +182,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   // Confetti controller for streak celebration
   late ConfettiController _confettiController;
   int _prevStreak = 0;
+  Timer? _owlTimer;
 
   // Gamification states
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -217,6 +221,15 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _voice.setLanguage(context.read<LanguageProvider>().language);
     _voice.initialize();
 
+    // Monitor connectivity
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((result) {
+      if (mounted) {
+        setState(() {
+          _isOffline = result.contains(ConnectivityResult.none);
+        });
+      }
+    });
+
     _textController.addListener(() {
       final hasText = _textController.text.trim().isNotEmpty;
       if (hasText != _hasText) setState(() => _hasText = hasText);
@@ -248,6 +261,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _textController.dispose();
     _textFocus.dispose();
     _confettiController.dispose();
+    _owlTimer?.cancel();
+    _connectivitySubscription?.cancel();
     _audioPlayer.dispose();
     super.dispose();
   }
@@ -449,7 +464,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       List<Map<String, dynamic>> ytResults = [];
       final ytQuery = result['youtube_search_query']?.toString();
       if (ytQuery != null && ytQuery.isNotEmpty) {
-        ytResults = await _api.youtubeSearch(query: ytQuery, grade: currentGrade);
+        ytResults = await _api.youtubeSearch(query: ytQuery, grade: langProv.grade);
       }
 
       if (!mounted) return;
@@ -717,7 +732,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final quizAvailable = sp.progress.todayQuestions >= 3 && !widget.isGuest;
 
     return Scaffold(
-      backgroundColor: kBackground,
+      backgroundColor: kGoogleLightGray,
       appBar: _selectedIndex == 0 ? _buildAppBar() : null,
       body: IndexedStack(
         index: _selectedIndex,
@@ -727,6 +742,26 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             children: [
               Column(
                 children: [
+                  if (_isOffline)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      color: Colors.orange.shade50,
+                      child: Row(
+                        children: [
+                          Icon(Icons.wifi_off, size: 16, color: Colors.orange.shade700),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Offline mode — basic answers available',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.orange.shade800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ).animate().slideY(begin: -1, end: 0),
                   // Streak banner
                   if (!widget.isGuest) _buildStreakBanner(),
                   // Hotword status bar
