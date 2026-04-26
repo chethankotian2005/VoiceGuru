@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'local_library_service.dart';
 
 const String baseUrl = String.fromEnvironment(
   'API_BASE_URL',
@@ -114,6 +115,26 @@ class ApiService {
     int grade,
   ) async {
     try {
+      // 1. Try to find in Personal Smart Library
+      final library = LocalLibraryService();
+      final savedAnswer = await library.searchLibrary(text, language);
+      
+      if (savedAnswer != null) {
+        return {
+          'explanation': savedAnswer['explanation'],
+          'subject': savedAnswer['subject'],
+          'grade_used': savedAnswer['grade'],
+          'language': savedAnswer['language'],
+          'needs_diagram': false,
+          'diagram_type': 'none',
+          'youtube_search_query': null,
+          'offline_mode': true,
+          'is_from_library': true,
+          'agent_trace': ['Personal Smart Library'],
+        };
+      }
+
+      // 2. Fallback to generic offline message
       final cachedContext = _getCachedSyllabus(grade);
       final prompt = """You are VoiceGuru, an offline AI tutor. The student has no internet right now.
 Answer this question briefly in $language:

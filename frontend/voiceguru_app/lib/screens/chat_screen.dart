@@ -24,6 +24,7 @@ import 'profile_screen.dart';
 import 'progress_screen.dart';
 import 'quiz_screen.dart';
 import 'package:provider/provider.dart';
+import '../services/local_library_service.dart';
 import '../providers/language_provider.dart';
 import '../providers/streak_provider.dart';
 import '../l10n/app_strings.dart';
