@@ -1068,18 +1068,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           leading: Padding(
             padding: const EdgeInsets.only(left: 12),
             child: Center(
-              child: Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF4285F4), Color(0xFF34A853)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Center(
-                  child: Text('🦉', style: TextStyle(fontSize: 20)),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  width: 36,
+                  height: 36,
+                  fit: BoxFit.cover,
                 ),
               ),
             ),
