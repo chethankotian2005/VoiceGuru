@@ -1033,110 +1033,150 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   // ─── App Bar ───
+  Color _getSubjectColor(String? subject) {
+    switch (subject) {
+      case 'math': return const Color(0xFF4285F4);
+      case 'science': return const Color(0xFF34A853);
+      case 'social_studies': return const Color(0xFFF4B400);
+      default: return const Color(0xFF9E9E9E);
+    }
+  }
+
+  String _getSubjectLabel(String? subject) {
+    switch (subject) {
+      case 'math': return '📐 Math';
+      case 'science': return '🔬 Science';
+      case 'social_studies': return '🌍 Social Studies';
+      default: return '💡 General';
+    }
+  }
+
   PreferredSizeWidget _buildAppBar() {
+    final childName = widget.isGuest ? 'Guest' : context.watch<LanguageProvider>().childName;
+    final sp = context.watch<StreakProvider>();
+    final level = sp.level;
+    final diffLabel = sp.progress.difficultyLabel;
+
     return PreferredSize(
       preferredSize: const Size.fromHeight(kToolbarHeight),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 500),
-        color: _currentSubjectColor.withValues(alpha: 0.1),
-        child: SafeArea(
-          child: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            scrolledUnderElevation: 1,
-            leading: Padding(
-              padding: const EdgeInsets.only(left: 16),
-              child: Center(
-                child: ClipOval(
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    width: 32,
-                    height: 32,
-                    fit: BoxFit.cover,
+      child: SafeArea(
+        child: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 1,
+          shadowColor: Colors.black12,
+          leading: Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: Center(
+              child: Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF4285F4), Color(0xFF34A853)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Text('🦉', style: TextStyle(fontSize: 20)),
                 ),
               ),
             ),
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
+          ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'VoiceGuru',
+                      style: TextStyle(
+                        color: Color(0xFF4285F4),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    if (!widget.isGuest)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF34A853).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF34A853).withOpacity(0.3)),
+                        ),
+                        child: Text(
+                          'Lv.$level $diffLabel',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF34A853),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (!widget.isGuest)
                 Text(
-                  'VoiceGuru',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: kGoogleBlue,
+                  'Hi $childName 👋',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  overflow: TextOverflow.ellipsis,
+                ),
+            ],
+          ),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.history_rounded, color: Colors.grey.shade600),
+              onPressed: () {
+                Navigator.of(context).push(_slideRoute(HistoryScreen(
+                  backendBaseUrl: widget.backendBaseUrl,
+                  childId: context.read<LanguageProvider>().childId,
+                  refreshToken: 0,
+                )));
+              },
+            ),
+            GestureDetector(
+              onTap: widget.isGuest ? null : () => Navigator.push(
+                context, _slideRoute(const ProfileScreen()),
+              ),
+              child: Container(
+                margin: const EdgeInsets.only(right: 12),
+                width: 36, height: 36,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF4285F4), Color(0xFF1A73E8)],
                   ),
                 ),
-                const SizedBox(width: 8),
-                if (!widget.isGuest)
-                  Consumer<StreakProvider>(
-                    builder: (_, sp, __) => LevelBadge(level: sp.level),
+                child: Center(
+                  child: Text(
+                    childName.isNotEmpty ? childName[0].toUpperCase() : '?',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
-              ],
-            ),
-          ),
-          if (!widget.isGuest)
-            Text(
-              'Hi ${context.watch<LanguageProvider>().childName} 👋',
-              style: TextStyle(
-                fontSize: 13,
-                color: kTextSecondary,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-        ],
-      ),
-      actions: [
-        // History button
-        IconButton(
-          icon: const Icon(Icons.history_rounded, color: kTextSecondary),
-          onPressed: () {
-            Navigator.of(context).push(_slideRoute(HistoryScreen(
-              backendBaseUrl: widget.backendBaseUrl,
-              childId: context.read<LanguageProvider>().childId,
-              refreshToken: 0,
-            )));
-          },
-        ),
-        // Avatar
-        Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: IconButton(
-            onPressed: widget.isGuest ? null : () => Navigator.push(
-              context,
-              _slideRoute(const ProfileScreen()),
-            ),
-            icon: CircleAvatar(
-              radius: 18,
-              backgroundColor: kGoogleBlue.withValues(alpha: 0.1),
-              child: Text(
-                widget.isGuest ? '👤' : context.watch<LanguageProvider>().childName[0].toUpperCase(),
-                style: TextStyle(
-                  fontSize: widget.isGuest ? 18 : 16,
-                  fontWeight: FontWeight.bold,
-                  color: kGoogleBlue,
                 ),
               ),
             ),
+          ],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child: Container(height: 1, color: Colors.grey.shade200),
           ),
-        ),
-      ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Container(height: 1, color: Colors.grey.shade200),
-      ),
-    ),
         ),
       ),
     );
   }
+
 
   // ─── Streak Banner ───
   Widget _buildStreakBanner() {
@@ -1204,70 +1244,72 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   // ─── Status Bar ───
   Widget _buildStatusBar() {
     final lang = context.watch<LanguageProvider>().language;
-    if (_hotwordState == HotwordState.idle) {
-      return const SizedBox.shrink();
-    }
-
-    IconData icon;
-    String text;
-    Color bgColor;
-    Color textColor;
-
-    switch (_hotwordState) {
-      case HotwordState.listening:
-        icon = Icons.hearing_rounded;
-        text = AppStrings.get('listening', lang);
-        bgColor = kGoogleGreen.withOpacity(0.1);
-        textColor = kGoogleGreen;
-        break;
-      case HotwordState.detected:
-        icon = Icons.mic_rounded;
-        text = AppStrings.get('tap_mic', lang);
-        bgColor = kGoogleBlue.withOpacity(0.1);
-        textColor = kGoogleBlue;
-        break;
-      case HotwordState.processing:
-        icon = Icons.auto_awesome;
-        text = AppStrings.get('thinking', lang);
-        bgColor = kGoogleYellow.withOpacity(0.1);
-        textColor = kGoogleYellow.withOpacity(0.8);
-        break;
-      default:
-        return const SizedBox.shrink();
-    }
-
-    return Container(
-      height: 36,
-      width: double.infinity,
-      color: bgColor,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          if (_hotwordState == HotwordState.processing)
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: textColor,
+    
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: _hotwordState == HotwordState.processing
+        ? Container(
+            key: const ValueKey('processing'),
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: const Color(0xFF4285F4).withOpacity(0.05),
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 16, height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Color(0xFF4285F4),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  AppStrings.get('thinking', lang),
+                  style: const TextStyle(
+                    color: Color(0xFF4285F4),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          )
+        : _hotwordState == HotwordState.listening
+          ? Container(
+              key: const ValueKey('listening'),
+              color: Colors.red.withOpacity(0.05),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.radio_button_on, color: Colors.red, size: 14)
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .scale(begin: const Offset(1, 1), end: const Offset(1.3, 1.3), duration: 800.ms),
+                  const SizedBox(width: 8),
+                  Text(
+                    AppStrings.get('listening', lang),
+                    style: const TextStyle(color: Colors.red, fontSize: 13),
+                  ),
+                ],
               ),
             )
-          else
-            Icon(icon, size: 16, color: textColor)
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .scale(begin: const Offset(1, 1), end: const Offset(1.3, 1.3),
-                    duration: 800.ms),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: textColor,
-            ),
-          ),
-        ],
-      ),
+          : _hotwordState == HotwordState.detected
+            ? Container(
+                key: const ValueKey('detected'),
+                color: const Color(0xFF4285F4).withOpacity(0.05),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.mic, color: Color(0xFF4285F4), size: 16)
+                      .animate(onPlay: (c) => c.repeat(reverse: true))
+                      .scale(begin: const Offset(1, 1), end: const Offset(1.3, 1.3), duration: 800.ms),
+                    const SizedBox(width: 8),
+                    Text(
+                      AppStrings.get('tap_mic', lang),
+                      style: const TextStyle(color: Color(0xFF4285F4), fontSize: 13),
+                    ),
+                  ],
+                ),
+              )
+            : const SizedBox.shrink(key: ValueKey('idle')),
     );
   }
 
@@ -1355,50 +1397,72 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   Widget _buildAiBubble(ChatMessage msg, int index) {
     final lang = context.watch<LanguageProvider>().language;
+    final subjectColor = _getSubjectColor(msg.subject);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 6, right: 8),
-          child: CircleAvatar(
-            radius: 14,
-            backgroundColor: Color(0xFFEFF6FF), // blue.shade50
-            child: Text('🦉', style: TextStyle(fontSize: 14)),
+        Padding(
+          padding: const EdgeInsets.only(top: 6, right: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: subjectColor, width: 2),
+            ),
+            child: const CircleAvatar(
+              radius: 18,
+              backgroundColor: Colors.white,
+              child: Text('🦉', style: TextStyle(fontSize: 20)),
+            ),
           ),
         ),
-        Expanded(
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 6),
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.90,
+        Flexible(
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(18),
+                bottomLeft: Radius.circular(18),
+                bottomRight: Radius.circular(18),
               ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: Colors.grey.shade100),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(4),
-                  topRight: Radius.circular(18),
-                  bottomLeft: Radius.circular(18),
-                  bottomRight: Radius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Subject indicator chip
+                if (msg.subject != null && msg.subject != 'general' && msg.subject != 'other')
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: subjectColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      _getSubjectLabel(msg.subject),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: subjectColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Section A - Explanation text
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                    child: _TypewriterText(text: msg.text),
-                  ),
+                // Section A - Explanation text
+                _TypewriterText(
+                  text: msg.text,
+                  style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87),
+                ),
+                const SizedBox(height: 4),
+
 
                   // Section A2 - Step-by-step card (image analysis only)
                   if (msg.steps.isNotEmpty)
@@ -1411,28 +1475,30 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       ),
                     ),
 
-            // Key terms chips
+            // Key terms chips — tappable follow-ups
             if (msg.keyTerms.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
                 child: Wrap(
                   spacing: 6,
                   runSpacing: 4,
                   children: msg.keyTerms
-                      .map((t) => Chip(
+                      .map((t) => ActionChip(
                             label: Text(t,
-                                style: TextStyle(
-                                    fontSize: 11, color: kGoogleBlue)),
-                            backgroundColor: kGoogleBlue.withOpacity(0.08),
-                            side: BorderSide.none,
+                                style: const TextStyle(
+                                    fontSize: 12, color: Color(0xFF4285F4))),
+                            backgroundColor: const Color(0xFF4285F4).withOpacity(0.08),
+                            side: BorderSide(color: const Color(0xFF4285F4).withOpacity(0.2)),
                             padding: EdgeInsets.zero,
                             materialTapTargetSize:
                                 MaterialTapTargetSize.shrinkWrap,
                             visualDensity: VisualDensity.compact,
+                            onPressed: () => _sendQuestion('Tell me more about $t'),
                           ))
                       .toList(),
                 ),
               ),
+
 
             // Section B â€” Diagram
             if (msg.needsDiagram && msg.diagramType != 'none' && msg.diagramType != 'null' && msg.diagramType.isNotEmpty)
@@ -1530,10 +1596,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           ).animate()
             .slideY(begin: 0.25, end: 0, duration: 300.ms, curve: Curves.easeOutCubic)
             .fadeIn(duration: 250.ms),
-        ),
+
       ],
     );
   }
+
 
   Widget _buildYoutubeCard(Map<String, dynamic> yt) {
     final title = yt['title']?.toString() ?? '';
@@ -1607,127 +1674,102 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   Widget _buildInputBar() {
     final lang = context.watch<LanguageProvider>().language;
     return Container(
-      decoration: BoxDecoration(
-        color: kSurface,
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
+      color: Colors.white,
       padding: EdgeInsets.fromLTRB(
-          12, 10, 12, MediaQuery.of(context).padding.bottom + 10),
-      child: Row(
-        children: [
-          // Mic button
-          GestureDetector(
-            onTap: _handleMicTap,
-            child: AnimatedBuilder(
-              animation: _pulseController,
-              builder: (context, child) {
-                final scale = _isRecording
-                    ? 1.0 + _pulseController.value * 0.15
-                    : 1.0;
-                return Transform.scale(
-                  scale: scale,
-                  child: Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _isRecording ? kGoogleRed : Colors.transparent,
-                      border: Border.all(
-                        color: _isRecording ? kGoogleRed : kGoogleBlue,
-                        width: 2.5,
-                      ),
-                      boxShadow: _isRecording
-                          ? [
-                              BoxShadow(
-                                color: kGoogleRed.withOpacity(0.3),
-                                blurRadius: 12,
-                                spreadRadius: 2,
-                              )
-                            ]
-                          : null,
-                    ),
-                    child: Icon(
-                      _isRecording ? Icons.stop_rounded : Icons.mic_rounded,
-                      color: _isRecording ? Colors.white : kGoogleBlue,
-                      size: 26,
-                    ),
-                  ),
-                );
-              },
+          12, 8, 12, MediaQuery.of(context).padding.bottom + 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 12,
+              offset: const Offset(0, 2),
             ),
-          ),
-          
-          // Image picker button
-          IconButton(
-            onPressed: _handleImagePick,
-            icon: Icon(Icons.add_photo_alternate_outlined,
-                color: Colors.grey.shade600),
-          ),
-          const SizedBox(width: 4),
-
-          // Text field
-          Expanded(
-            child: TextField(
-              controller: _textController,
-              focusNode: _textFocus,
-              style: TextStyle(fontSize: 15, color: kTextPrimary),
-              decoration: InputDecoration(
-                hintText: AppStrings.get('type_question', lang),
-                hintStyle: TextStyle(
-                  fontSize: 15,
-                  color: kTextSecondary.withOpacity(0.5),
-                ),
-                filled: true,
-                fillColor: kBackground,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                isDense: true,
-              ),
-              textInputAction: TextInputAction.send,
-              onSubmitted: (text) => _sendQuestion(text),
-            ),
-          ),
-
-          // Send button
-          if (_hasText) ...[
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () => _sendQuestion(_textController.text),
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: kGoogleBlue,
-                ),
-                child: const Icon(
-                  Icons.send_rounded,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
-            ).animate().scale(
-                  begin: const Offset(0, 0),
-                  end: const Offset(1, 1),
-                  duration: 200.ms,
-                  curve: Curves.elasticOut,
-                ),
           ],
-        ],
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+            // Mic button inside the search bar
+            GestureDetector(
+              onTap: _handleMicTap,
+              child: AnimatedBuilder(
+                animation: _pulseController,
+                builder: (context, child) {
+                  final scale = _isRecording
+                      ? 1.0 + _pulseController.value * 0.15
+                      : 1.0;
+                  return Transform.scale(
+                    scale: scale,
+                    child: Container(
+                      margin: const EdgeInsets.all(6),
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _isRecording
+                            ? Colors.red
+                            : const Color(0xFF4285F4),
+                        boxShadow: _isRecording
+                            ? [BoxShadow(color: Colors.red.withOpacity(0.3), blurRadius: 8)]
+                            : null,
+                      ),
+                      child: Icon(
+                        _isRecording ? Icons.stop : Icons.mic,
+                        color: Colors.white, size: 20,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            // Camera/image button
+            IconButton(
+              onPressed: _handleImagePick,
+              icon: Icon(Icons.add_photo_alternate_outlined,
+                  color: Colors.grey.shade500, size: 22),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            ),
+            // Text field
+            Expanded(
+              child: TextField(
+                controller: _textController,
+                focusNode: _textFocus,
+                style: const TextStyle(fontSize: 15, color: Colors.black87),
+                decoration: InputDecoration(
+                  hintText: AppStrings.get('type_question', lang),
+                  hintStyle: TextStyle(
+                    color: Colors.grey.shade400,
+                    fontSize: 15,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 4, vertical: 10),
+                ),
+                textInputAction: TextInputAction.send,
+                onSubmitted: (text) => _sendQuestion(text),
+              ),
+            ),
+            // Send button
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: _hasText
+                  ? IconButton(
+                      key: const ValueKey('send'),
+                      onPressed: () => _sendQuestion(_textController.text),
+                      icon: const Icon(Icons.send_rounded,
+                          color: Color(0xFF4285F4)),
+                    )
+                  : const SizedBox(width: 8, key: ValueKey('empty')),
+            ),
+          ],
+        ),
       ),
     );
   }
+
 }
 
 // ─────────────────────────────────────────────
