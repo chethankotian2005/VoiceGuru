@@ -2,6 +2,8 @@
 
 A hyper-personalized, voice-first AI tutoring platform built specifically for State Board and CBSE students. VoiceGuru transforms the educational experience by delivering dynamic, curriculum-accurate, and highly engaging tutoring natively in the student's preferred language.
 
+Download the App and install directly👇🏻
+https://drive.google.com/drive/folders/1qzCmSYsBsvorU_Q25txpOWG18jPm9yEa
 ---
 
 ## 🌟 Key Features
