@@ -20,6 +20,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late int _selectedGrade;
   late String _selectedBoard;
   late String _selectedLanguage;
+  late TextEditingController _parentPhoneController;
+  late TextEditingController _callmebotKeyController;
+  bool _reportSent = false;
+  bool _isSendingReport = false;
 
   final _formKey = GlobalKey<FormState>();
 
@@ -39,11 +43,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _selectedGrade = langProv.grade;
     _selectedBoard = langProv.board;
     _selectedLanguage = langProv.language;
+    _parentPhoneController = TextEditingController();
+    _callmebotKeyController = TextEditingController();
+    _loadParentData();
+  }
+
+  Future<void> _loadParentData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _parentPhoneController.text = prefs.getString('parent_phone') ?? '';
+      _callmebotKeyController.text = prefs.getString('callmebot_key') ?? '';
+    });
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _parentPhoneController.dispose();
+    _callmebotKeyController.dispose();
     super.dispose();
   }
 
@@ -77,6 +94,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
     Navigator.of(context).pop();
+  }
+
+  Future<void> _sendTestReport() async {
+    final phone = _parentPhoneController.text.trim();
+    final key = _callmebotKeyController.text.trim();
+
+    if (phone.isEmpty || key.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter phone and API key')),
+      );
+      return;
+    }
+
+    setState(() => _isSendingReport = true);
+
+    final langProv = context.read<LanguageProvider>();
+    final api = ApiService(baseUrl: baseUrl);
+
+    try {
+      final response = await api.sendParentReport(
+        childId: langProv.childId,
+        childName: langProv.childName,
+        parentPhone: phone,
+        apiKey: key,
+        language: langProv.language,
+      );
+
+      if (response['sent'] == true) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('parent_phone', phone);
+        await prefs.setString('callmebot_key', key);
+        
+        setState(() => _reportSent = true);
+        Future.delayed(const Duration(seconds: 5), () {
+          if (mounted) setState(() => _reportSent = false);
+        });
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response['message'] ?? 'Failed to send report')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error connecting to server')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSendingReport = false);
+    }
   }
 
   Future<void> _clearHistory() async {
@@ -404,6 +471,90 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           );
                         }).toList(),
                       ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // ─── PARENT UPDATES ───
+              Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.grey.shade200),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        const Icon(Icons.notifications_active_outlined, color: Color(0xFF34A853), size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          AppStrings.get('parent_updates', lang),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                      ]),
+                      const SizedBox(height: 8),
+                      Text(
+                        AppStrings.get('parent_updates_note', lang),
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _parentPhoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          labelText: "Parent's WhatsApp (with +country)",
+                          hintText: "+91XXXXXXXXXX",
+                          prefixIcon: const Icon(Icons.phone_iphone, size: 20),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _callmebotKeyController,
+                        decoration: InputDecoration(
+                          labelText: "CallMeBot API Key",
+                          hintText: "Get at callmebot.com",
+                          prefixIcon: const Icon(Icons.key_outlined, size: 20),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          onPressed: _isSendingReport ? null : _sendTestReport,
+                          icon: _isSendingReport 
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.send_rounded, size: 18),
+                          label: Text(_isSendingReport ? 'Sending...' : 'Send Weekly Report Now'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF25D366),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                      if (_reportSent)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Row(children: [
+                            const Icon(Icons.check_circle, color: Color(0xFF34A853), size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Report sent to parent WhatsApp!',
+                              style: TextStyle(color: Colors.green.shade700, fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                          ]),
+                        ),
                     ],
                   ),
                 ),

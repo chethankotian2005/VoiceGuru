@@ -389,7 +389,7 @@ async def save_quiz_result(child_id: str, score: int, total: int, grade: int, la
     except Exception:
         pass
 
-async def save_user_profile(child_id: str, name: str, grade: int, board: str, language: str, mascot: str) -> None:
+async def save_user_profile(child_id: str, name: str, grade: int, board: str, language: str, mascot: str, parent_phone: str = None, callmebot_api_key: str = None) -> None:
     try:
         client = _get_firestore_client()
         if client is None:
@@ -407,10 +407,38 @@ async def save_user_profile(child_id: str, name: str, grade: int, board: str, la
             "mascot": mascot,
             "updated_at": firestore.SERVER_TIMESTAMP,
         }
+        if parent_phone:
+            payload["parent_phone"] = parent_phone
+        if callmebot_api_key:
+            payload["callmebot_api_key"] = callmebot_api_key
+
         # Use merge=True so we don't overwrite other fields if they exist
         await asyncio.to_thread(doc_ref.set, payload, merge=True)
     except Exception:
         pass
+
+async def get_all_children_with_parent_data() -> list[dict]:
+    """Fetch all users who have registered a parent phone and API key."""
+    try:
+        client = _get_firestore_client()
+        if client is None:
+            return []
+        
+        def _query():
+            docs = client.collection("users") \
+                .where("parent_phone", "!=", None) \
+                .stream()
+            
+            results = []
+            for doc in docs:
+                data = doc.to_dict()
+                if data.get("parent_phone") and data.get("callmebot_api_key"):
+                    results.append(data)
+            return results
+            
+        return await asyncio.to_thread(_query)
+    except Exception:
+        return []
 
 async def get_user_profile(child_id: str) -> dict | None:
     try:

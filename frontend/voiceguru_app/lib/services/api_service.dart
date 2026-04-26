@@ -187,6 +187,42 @@ Keep answer under 80 words. Be warm and helpful.""";
     return 'Karnataka State Board Class $grade curriculum topics';
   }
 
+  // ─── WhatsApp Parent Report ───
+  Future<Map<String, dynamic>> sendParentReport({
+    required String childId,
+    required String childName,
+    required String parentPhone,
+    required String apiKey,
+    required String language,
+  }) async {
+    try {
+      final response = await _client.post(
+        _uri('/send_parent_report'),
+        headers: const <String, String>{
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(
+          <String, dynamic>{
+            'child_id': childId,
+            'child_name': childName,
+            'parent_phone': parentPhone,
+            'callmebot_api_key': apiKey,
+            'language': language,
+          },
+        ),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return (jsonDecode(response.body) as Map).cast<String, dynamic>();
+      }
+    } catch (_) {}
+
+    return <String, dynamic>{
+      'sent': false,
+      'message': 'Could not connect to VoiceGuru server.',
+    };
+  }
+
   // ─── Ask Image ───
   Future<Map<String, dynamic>> askImage({
     required String imageBase64,

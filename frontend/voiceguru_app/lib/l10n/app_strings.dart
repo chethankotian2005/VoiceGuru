@@ -64,6 +64,8 @@ class AppStrings {
       'sign_out': 'Sign Out / Reset',
       'preferred_lang': 'Preferred Language',
       'lang_note': 'The app will respond in the language you speak, but this sets your default interface language.',
+      'parent_updates': 'Parent Updates',
+      'parent_updates_note': 'Send weekly learning reports to your parent via WhatsApp. They will see what you explored and how you performed in quizzes.',
       
       // Navigation
       'learn': 'Learn',
@@ -135,6 +137,8 @@ class AppStrings {
       'sign_out': 'ಸೈನ್ ಔಟ್ / ರೀಸೆಟ್',
       'preferred_lang': 'ಆದ್ಯತೆಯ ಭಾಷೆ',
       'lang_note': 'ಅಪ್ಲಿಕೇಶನ್ ನೀವು ಮಾತನಾಡುವ ಭಾಷೆಯಲ್ಲಿ ಪ್ರತಿಕ್ರಿಯಿಸುತ್ತದೆ.',
+      'parent_updates': 'ಪೋಷಕರ ನವೀಕರಣಗಳು',
+      'parent_updates_note': 'ನಿಮ್ಮ ಪೋಷಕರಿಗೆ ವಾಟ್ಸಾಪ್ ಮೂಲಕ ವಾರದ ಕಲಿಕೆಯ ವರದಿಗಳನ್ನು ಕಳುಹಿಸಿ. ನೀವು ಏನು ಅನ್ವೇಷಿಸಿದ್ದೀರಿ ಮತ್ತು ರಸಪ್ರಶ್ನೆಗಳಲ್ಲಿ ನೀವು ಹೇಗೆ ಪ್ರದರ್ಶನ ನೀಡಿದ್ದೀರಿ ಎಂದು ಅವರು ನೋಡುತ್ತಾರೆ.',
       
       // Navigation
       'learn': 'ಕಲಿ',

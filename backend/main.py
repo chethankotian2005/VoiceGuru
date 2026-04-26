@@ -4,6 +4,7 @@ import base64
 import asyncio
 import os
 import re
+import urllib.parse
 from typing import Literal, Optional
 import json
 from collections import defaultdict
@@ -201,6 +202,13 @@ class CreateUserRequest(BaseModel):
     language: str = "english"
     mascot: str = "owl"
 
+class ParentReportRequest(BaseModel):
+    child_id: str
+    child_name: str
+    parent_phone: str
+    callmebot_api_key: str
+    language: str = "english"
+
 class WeeklyData(BaseModel):
     day: str
     questions: int
@@ -279,6 +287,53 @@ def _tts_language_code(language: str) -> str:
     return mapping.get((language or "").strip().lower(), "en-IN-Wavenet-A")
 
 
+# --------------- WhatsApp Reporting ---------------
+
+CALLMEBOT_API = "https://api.callmebot.com/whatsapp.php"
+
+async def generate_parent_report(child_id: str, child_name: str, language: str) -> str:
+    from firebase_logger import get_weekly_summary
+    summary = await get_weekly_summary(child_id)
+    
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    
+    prompt = f"""Generate a warm, encouraging weekly learning report for parents about their child {child_name}.
+
+Data from this week: {summary}
+
+Write the report entirely in {language}. 
+Maximum 100 words.
+Mention: topics they explored, total questions asked, quiz performance (if data exists), and one warm encouragement line.
+Sound like a helpful teacher writing to a parent. No technical jargon. No markdown."""
+    
+    response = await asyncio.to_thread(
+        client.models.generate_content,
+        model='gemini-2.5-flash-lite',
+        contents=prompt
+    )
+    return response.text.strip()
+
+async def send_whatsapp_report(phone: str, child_name: str, child_id: str, api_key: str, language: str = "english") -> bool:
+    try:
+        # Generate report text using Gemini
+        report = await generate_parent_report(child_id, child_name, language)
+        
+        # Add dashboard link
+        dashboard_url = f"https://voiceguru-backend.onrender.com/dashboard/{child_id}/report"
+        
+        message = f"📚 *VoiceGuru Weekly Report*\n\n{report}\n\n🔗 View full report: {dashboard_url}\n\n_Powered by VoiceGuru - AI Tutor_"
+        
+        encoded_message = urllib.parse.quote(message)
+        url = f"{CALLMEBOT_API}?phone={phone}&text={encoded_message}&apikey={api_key}"
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, timeout=15.0)
+            return response.status_code == 200
+    except Exception as e:
+        print(f"WhatsApp send error: {e}")
+        return False
+
+
 def convert_to_ssml(text: str) -> str:
     """Convert plain text to SSML with natural pauses and emphasis for child-friendly speech."""
     # Wrap in SSML speak tags
@@ -332,6 +387,52 @@ async def create_user(payload: CreateUserRequest):
         return {"status": "success", "child_id": final_id}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+@app.post("/send_parent_report")
+async def api_send_parent_report(payload: ParentReportRequest):
+    # Save the contact info first so it's persisted for future triggers
+    from firebase_logger import save_user_profile, get_user_profile
+    profile = await get_user_profile(payload.child_id)
+    if profile:
+        await save_user_profile(
+            child_id=payload.child_id,
+            name=profile.get("name", "Student"),
+            grade=profile.get("grade", 6),
+            board=profile.get("board", "Karnataka State Board"),
+            language=profile.get("language", "english"),
+            mascot=profile.get("mascot", "owl"),
+            parent_phone=payload.parent_phone,
+            callmebot_api_key=payload.callmebot_api_key
+        )
+
+    success = await send_whatsapp_report(
+        phone=payload.parent_phone,
+        child_name=payload.child_name,
+        child_id=payload.child_id,
+        api_key=payload.callmebot_api_key,
+        language=payload.language
+    )
+    return {"sent": success, "message": "Report delivered to parent" if success else "Failed to deliver report"}
+
+@app.post("/trigger_weekly_reports")
+async def trigger_weekly_reports():
+    """Admin endpoint to send reports to all registered parents."""
+    from firebase_logger import get_all_children_with_parent_data
+    children = await get_all_children_with_parent_data()
+    
+    count = 0
+    for child in children:
+        success = await send_whatsapp_report(
+            phone=child["parent_phone"],
+            child_name=child["name"],
+            child_id=child["child_id"],
+            api_key=child["callmebot_api_key"],
+            language=child.get("language", "english")
+        )
+        if success:
+            count += 1
+            
+    return {"status": "success", "reports_sent": count}
 
 
 @app.post("/clear_context")
