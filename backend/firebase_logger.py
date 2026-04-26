@@ -301,14 +301,17 @@ async def get_progress_data(child_id: str) -> dict:
                 streak_days += 1
                 check_date = check_date - timedelta(days=1)
 
-            # Weekly data (Last 7 days)
+            # Weekly data (Current week from Monday)
+            today = datetime.now().date()
+            monday = today - timedelta(days=today.weekday())
+            day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+            
             weekly_data = []
-            for i in range(6, -1, -1):
-                d = today_date - timedelta(days=i)
+            for i in range(7):
+                d = monday + timedelta(days=i)
                 d_str = d.isoformat()
-                day_name = d.strftime("%a")
                 weekly_data.append({
-                    "day": day_name,
+                    "day": day_names[i],
                     "questions": daily_counts.get(d_str, 0),
                     "date": d_str
                 })

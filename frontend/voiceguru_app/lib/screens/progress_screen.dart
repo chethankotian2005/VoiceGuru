@@ -596,13 +596,22 @@ class _ProgressScreenState extends State<ProgressScreen>
         elevation: 0,
         scrolledUnderElevation: 1,
         leading: BackButton(color: kTextPrimary),
-        title: Text(
-          AppStrings.get('my_progress', lang),
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: kTextPrimary,
-            fontSize: 20,
-          ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                AppStrings.get('my_progress', lang),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: kTextPrimary,
+                  fontSize: 20,
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           Consumer<StreakProvider>(
@@ -772,21 +781,51 @@ class _ProgressScreenState extends State<ProgressScreen>
         ),
       );
 
+  final motivationalMessages = {
+    'english': {
+      0: '🚀 Start your learning journey today!',
+      1: '💪 Good start! Keep going!',
+      3: '🔥 You\'re on fire! Don\'t break the streak!',
+      7: '🌟 Incredible! You\'re a true scholar!',
+    },
+    'kannada': {
+      0: '🚀 ಇಂದು ನಿಮ್ಮ ಕಲಿಕೆಯ ಪ್ರಯಾಣ ಪ್ರಾರಂಭಿಸಿ!',
+      1: '💪 ಒಳ್ಳೆಯ ಪ್ರಾರಂಭ! ಮುಂದುವರಿಯಿರಿ!',
+      3: '🔥 ನೀವು ಅದ್ಭುತವಾಗಿದ್ದೀರಿ! ಸ್ಟ್ರೀಕ್ ಮುರಿಯಬೇಡಿ!',
+      7: '🌟 ಅದ್ಭುತ! ನೀವು ನಿಜವಾದ ವಿದ್ವಾಂಸರು!',
+    },
+    'hindi': {
+      0: '🚀 आज अपनी सीखने की यात्रा शुरू करें!',
+      1: '💪 अच्छी शुरुआत! जारी रखो!',
+      3: '🔥 तुम आग पर हो! स्ट्रीक मत तोड़ो!',
+      7: '🌟 अविश्वसनीय! तुम सच्चे विद्वान हो!',
+    },
+    'tamil': {
+      0: '🚀 இன்று உங்கள் கற்றல் பயணத்தை தொடங்குங்கள்!',
+      1: '💪 நல்ல தொடக்கம்! தொடர்ந்து செல்லுங்கள்!',
+      3: '🔥 நீங்கள் அற்புதமாக இருக்கிறீர்கள்!',
+      7: '🌟 நம்பமுடியாதது! நீங்கள் உண்மையான அறிஞர்!',
+    },
+  };
+
   Widget _buildMotivationalMessage(int streakDays, String lang) {
+    final messages = motivationalMessages[lang] ?? motivationalMessages['english']!;
+    
     String msg;
     String emoji;
+    
     if (streakDays >= 7) {
-      msg = AppStrings.get('incredible_scholar', lang);
-      emoji = "🌟";
+      msg = messages[7]!.substring(2).trim();
+      emoji = messages[7]!.substring(0, 2).trim();
     } else if (streakDays >= 3) {
-      msg = AppStrings.get('on_fire', lang);
-      emoji = "🔥";
+      msg = messages[3]!.substring(2).trim();
+      emoji = messages[3]!.substring(0, 2).trim();
     } else if (streakDays >= 1) {
-      msg = AppStrings.get('good_start', lang);
-      emoji = "💪";
+      msg = messages[1]!.substring(2).trim();
+      emoji = messages[1]!.substring(0, 2).trim();
     } else {
-      msg = AppStrings.get('start_journey', lang);
-      emoji = "🚀";
+      msg = messages[0]!.substring(2).trim();
+      emoji = messages[0]!.substring(0, 2).trim();
     }
 
     return Container(
