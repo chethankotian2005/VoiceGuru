@@ -20,6 +20,8 @@ async def run_voiceguru_pipeline(
     language: str = "english",
     grade: int | None = None,
     child_id: str = "unknown",
+    conversation_context: str = "",
+    board: str = "Karnataka State Board",
 ) -> dict:
     try:
         classification = await classify_question(question)
@@ -33,13 +35,14 @@ async def run_voiceguru_pipeline(
         # Only fall back to request language if detection fails
         language_used = detected_language if detected_language else language
 
-        syllabus_context = get_syllabus_context(grade=grade_used, subject=subject)
+        syllabus_context = await get_syllabus_context(grade=grade_used, subject=subject, board=board)
         explainer_result = await explain(
             question=question,
             subject=subject,
             grade=grade_used,
             language=language_used,
             syllabus_context=syllabus_context,
+            conversation_context=conversation_context,
         )
         return {
             "explanation": explainer_result.get("explanation", ""),
@@ -107,12 +110,15 @@ async def run_simplify_pipeline(
         )
 
 
-def run_ask_pipeline(text: str, language: str, grade: int) -> dict:
+def run_ask_pipeline(text: str, language: str, grade: int, child_id: str = "unknown", conversation_context: str = "", board: str = "Karnataka State Board") -> dict:
     return asyncio.run(
         run_voiceguru_pipeline(
             question=text,
             language=language,
             grade=grade,
+            child_id=child_id,
+            conversation_context=conversation_context,
+            board=board,
         )
     )
 

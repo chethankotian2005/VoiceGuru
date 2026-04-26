@@ -50,7 +50,7 @@ def _get_client() -> genai.Client | None:
     return None
 
 
-def _build_system_prompt(grade: int, language: str, syllabus_context: str) -> str:
+def _build_system_prompt(grade: int, language: str, syllabus_context: str, conversation_context: str = "") -> str:
     if 1 <= grade <= 4:
         grade_search_context = 'Append "for kids primary school" to the query.'
     elif 5 <= grade <= 6:
@@ -61,8 +61,9 @@ def _build_system_prompt(grade: int, language: str, syllabus_context: str) -> st
         grade_search_context = 'Append "class 9 10 board exam explained" to the query.'
 
     return (
-        f"You are VoiceGuru, a friendly AI tutor for Karnataka State Board students. "
-        f"You are talking to a Class {grade} student.\n\n"
+        f"You are VoiceGuru, a warm and friendly AI tutor for Class {grade} students.\n\n"
+        f"CONVERSATION SO FAR:\n"
+        f"{conversation_context if conversation_context else 'This is the start of our conversation.'}\n\n"
         "You MUST respond with a valid JSON object and nothing else — no markdown, "
         "no code fences, no trailing text.\n\n"
         "JSON SCHEMA (follow exactly):\n"
@@ -76,29 +77,23 @@ def _build_system_prompt(grade: int, language: str, syllabus_context: str) -> st
         '  "youtube_search_query": "specific educational search query for YouTube, or null",\n'
         '  "key_terms": ["term1", "term2"]\n'
         "}\n\n"
-        "RULES:\n"
-        f"1. Write the explanation ONLY in {language}. Every word of the explanation "
-        f"must be in {language}.\n"
-        f"2. Keep the explanation under 120 words. It will be read aloud to a child.\n"
+        "CRITICAL RULES:\n"
+        f"1. Respond ENTIRELY in {language}. Every word of the explanation must be in {language}.\n"
+        f"2. Keep the explanation under 150 words. It will be read aloud to a child.\n"
         f"3. Use simple words a Class {grade} child understands.\n"
         "4. Use examples from daily life in Bangalore/Karnataka (local bus routes, "
         "Lalbagh, Vidhana Soudha, local fruits like mango and jackfruit, "
         "Karnataka festivals like Dasara, etc.).\n"
-        "5. Sound warm and encouraging, like a friendly teacher.\n"
-        "6. Never use markdown, bullet points, or special characters in the explanation text.\n"
-        "7. Set needs_diagram to true for ANY visual concept:\n"
-        "   - Science diagrams: photosynthesis, digestion, light scattering, "
-        "refraction, reflection, solar system, circuits, cell structure\n"
-        "   - Math geometry: triangles, circles, angles, coordinate planes\n"
-        "   - Ecology: food chains, water cycles, life cycles, ecosystems\n"
-        "   - Human body: skeleton, organs, nervous system\n"
-        "8. ALWAYS provide a youtube_search_query. Never set it to null. "
+        "5. If the student references something from earlier in the conversation ('that', 'it', 'the same topic', "
+        "'now explain more'), USE the conversation history to understand what they mean.\n"
+        "6. Never say 'I don't have context' — always infer from conversation history.\n"
+        "7. If student says 'exam ready answer' or 'in short' or 'now explain formally' — reformat your previous answer accordingly.\n"
+        "8. Stay on the SAME TOPIC until student clearly changes subject.\n"
+        "9. Never use markdown, bullet points, or special characters in the explanation text.\n"
+        "10. Set needs_diagram to true for ANY visual concept (Science diagrams, Math geometry, Ecology, Human body).\n"
+        "11. ALWAYS provide a youtube_search_query. Never set it to null. "
         f"Make it a specific, educational search query. {grade_search_context}\n"
-        "9. For diagram_type, you MUST pick an exact match from the allowed list: [ray_diagram, food_chain, water_cycle, number_line, geometric_shape, human_body, solar_system, circuit, bar_chart]. "
-        'CRITICAL: If the topic does NOT perfectly match one of these specific diagrams, you MUST rely on the youtube videos instead and set diagram_type to "none" and needs_diagram to false. Do not hallucinate diagram_type.\n'
-        "10. Include 2-5 key_terms that are the most important concepts in the answer.\n"
-        "11. JSON keys must be in English. Only the explanation text value and "
-        "diagram_description value should be in the requested language.\n\n"
+        "12. For diagram_type, you MUST pick an exact match from the allowed list or 'none'.\n\n"
         f"SYLLABUS CONTEXT:\n{syllabus_context}"
     )
 
@@ -165,6 +160,7 @@ async def explain(
     grade: int,
     language: str,
     syllabus_context: str,
+    conversation_context: str = "",
 ) -> dict[str, Any]:
     client = _get_client()
     if client is None:
@@ -186,6 +182,7 @@ async def explain(
                     grade=grade,
                     language=language,
                     syllabus_context=syllabus_context,
+                    conversation_context=conversation_context,
                 ),
                 response_mime_type="application/json"
             )
@@ -217,6 +214,7 @@ class ExplainerAgent:
         grade: int,
         language: str,
         syllabus_context: str,
+        conversation_context: str = "",
     ) -> dict[str, Any]:
         return await explain(
             question=question,
@@ -224,9 +222,10 @@ class ExplainerAgent:
             grade=grade,
             language=language,
             syllabus_context=syllabus_context,
+            conversation_context=conversation_context,
         )
 
-    def run(self, question: str, subject: str, grade: int, language: str, syllabus_context: str = "") -> dict[str, Any]:
+    def run(self, question: str, subject: str, grade: int, language: str, syllabus_context: str = "", conversation_context: str = "") -> dict[str, Any]:
         return asyncio.run(
             explain(
                 question=question,
@@ -234,5 +233,6 @@ class ExplainerAgent:
                 grade=grade,
                 language=language,
                 syllabus_context=syllabus_context,
+                conversation_context=conversation_context,
             )
         )

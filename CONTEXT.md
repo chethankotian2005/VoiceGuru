@@ -1,6 +1,6 @@
 # VoiceGuru Build Context
 
-Last Updated: 2026-04-26T02:05:00+05:30
+Last Updated: 2026-04-26T08:12:00+05:30
 
 ## Project Overview
 VoiceGuru is a voice-first AI tutoring app for Karnataka State Board students, designed to provide a personalized, multi-child learning experience.
@@ -12,7 +12,7 @@ VoiceGuru is a voice-first AI tutoring app for Karnataka State Board students, d
 ## Current Folder Structure
 - `backend/`
   - `agents/` (Classifier, Explainer/Solver, Simplifier, Quiz)
-  - `firebase_logger.py` (Multi-child Firestore logic & Analytics)
+  - `firebase_logger.py` (Multi-child Firestore logic, Analytics, & Deduplication)
   - `pipeline.py` (Orchestration)
   - `syllabus_context.py` (Karnataka Board Mapping)
   - `main.py` (API Endpoints & Deployment Config)
@@ -24,59 +24,46 @@ VoiceGuru is a voice-first AI tutoring app for Karnataka State Board students, d
   - `lib/services/` (API, TTS, Voice/STT)
   - `lib/widgets/` (Streak Banner, Diagram, Mascot, XP Toast)
 
-## Backend API (Current)
+## Backend API & Logic (Current)
 
-### 👤 User Management
-- **POST /create_user**: Persists child profile metadata (Name, Grade, Board, Mascot) to the `users` collection.
-- **Integration**: Called immediately after the frontend onboarding flow.
+### 👤 User Management & Deduplication
+- **POST /create_user**: Persists child profile metadata. Now includes **Deduplication Logic**.
+- **find_existing_user**: Backend helper that searches for Name + Grade matches in Firestore to prevent duplicate IDs.
+- **Sync Workflow**: If a match is found, the backend returns the existing `child_id`, which the frontend then adopts locally to recover history/progress.
 
 ### 📚 AI Tutoring & Homework
 - **POST /ask**: Standard text-based tutor response.
-- **POST /ask_image**: Enhanced Homework Solver. Returns `explanation`, `steps` (list), `final_answer`, and `hint`.
+- **POST /ask_image**: Step-by-Step Homework Solver with guided steps and hints.
 - **POST /simplify**: Simplifies complex explanations for younger students.
 
 ### 📊 Progress & Dashboard
 - **GET /progress/{child_id}**: Aggregates streaks, badges, and subject breakdown.
-- **GET /dashboard/{child_id}**: High-level JSON for teacher/parent view.
-- **GET /dashboard/{child_id}/report**: Gemini-generated weekly learning report (HTML).
-- **Integration**: Backend automatically identifies profiles via the `users` collection.
+- **GET /dashboard/{child_id}/report**: Gemini-generated HTML weekly reports for parents.
 
 ### 🎙️ Audio & Vision
 - **POST /transcribe**: STT with multilingual hotword detection ("Hey VoiceGuru").
 - **GET /speak**: Google Cloud TTS (Wavenet) synthesis.
-- **GET /youtube_search**: Grade-curated educational video search.
+- **GET /suggestions**: Grade/Language aware topic suggestions (UI compatibility fixed with `.withOpacity`).
+
+## Flutter App Refinements
+
+### 🎨 UI/UX Excellence
+- **Page Transitions**: Custom `SlideTransition` for all primary navigation.
+- **Message Animations**: Bubbles use `.slideY` + `.fadeIn` for a premium feel.
+- **Suggestion Cards**: Optimized aspect ratio (0.85) and compatibility fixes for older Flutter versions.
+- **Mascot Interactions**: Interactive reactions integrated into the chat flow.
+
+### 🎮 Gamification & Navigation
+- **Streak System**: Animated Duolingo-style fire banners.
+- **Quiz Navigation Fix**: Results screen now uses a callback (`onBackToLearning`) to switch tabs instead of popping, preventing "black screen" errors.
+- **Onboarding**: Form validation and automatic server-side profile syncing.
 
 ## Backend Deployment (Render)
-- **Repo**: Pushed to GitHub (`main` branch).
-- **Security**: `.gitignore` protects `.env` and sensitive JSON keys.
-- **Cloud Config**:
-  - **Root Directory**: `backend`
-  - **Secret Files**: Supports `voiceguru-credentials.json`.
-  - **Env Vars**: `GOOGLE_APPLICATION_CREDENTIALS` can now take the **raw JSON content** directly for easier setup.
+- **Status**: Live at `https://voiceguru-backend.onrender.com`.
+- **Security**: Environment variables used for `GOOGLE_APPLICATION_CREDENTIALS` (supports raw JSON).
+- **CI/CD**: Automatic deployment from GitHub `main` branch.
 
-## Flutter App (Polish & UX)
-
-### 🎨 Visual Excellence
-- **Page Transitions**: All navigation uses a custom `SlideTransition` (Slide from right, easeOutCubic).
-- **Message Animations**: Message bubbles slide up and fade in (`.slideY` + `.fadeIn`).
-- **Dynamic Theming**: AppBar color shifts based on the subject of the AI's response.
-- **Mascot**: Removed overlapping UI elements; mascot reactions are now integrated into the chat flow.
-
-### 🎮 Gamification
-- **Streak System**: Duolingo-style animated flame banner and motivational streaks.
-- **Dynamic Quizzes**: Generated based on today's learning topics after 3 questions are asked.
-- **Leveling**: Progresses from "Sprout" to "Master" based on XP (questions asked).
-
-### 🛠️ Services & Logic
-- **API Service**: Standardized to use `https://voiceguru-backend.onrender.com` (Cloud) or `10.x.x.x` (Local).
-- **Audio**: Success "beeps" removed for a more premium, quiet experience.
-- **Offline Fallbacks**: Local TTS and basic error handling ensure the app doesn't crash on network failure.
-
-## Environment and Dependencies
-- **Backend**: `fastapi`, `uvicorn`, `google-genai`, `firebase-admin`, `google-cloud-texttospeech`, `google-cloud-speech`.
-- **Frontend**: `provider`, `flutter_animate`, `just_audio`, `speech_to_text`, `confetti`, `animated_text_kit`.
-
-## Notes
-- Deployment on Render is verified and live.
-- Firebase connection supports raw JSON env vars to bypass path-resolution issues on cloud hosts.
-- Multi-child data isolation is strictly enforced via the `child_id` discriminator in all Firestore queries.
+## Notes for AI/User
+- **Data Isolation**: All learner data is segmented by `child_id`.
+- **Cross-Language Stability**: Navigation and state management tested across English, Kannada, Hindi, and Tamil.
+- **Legacy Support**: UI widgets use `.withOpacity` instead of `.withValues` for maximum device compatibility.

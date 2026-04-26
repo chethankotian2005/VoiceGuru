@@ -58,6 +58,7 @@ class ApiService {
     required String language,
     required int grade,
     required String childId,
+    required String board,
   }) async {
     try {
       final response = await _client.post(
@@ -71,6 +72,7 @@ class ApiService {
             'language': language,
             'grade': grade,
             'child_id': childId,
+            'board': board,
           },
         ),
       ).timeout(const Duration(seconds: 60));
@@ -102,6 +104,7 @@ class ApiService {
     required String language,
     required int grade,
     required String childId,
+    required String board,
     String? additionalContext,
   }) async {
     try {
@@ -116,6 +119,7 @@ class ApiService {
             'language': language,
             'grade': grade,
             'child_id': childId,
+            'board': board,
             if (additionalContext != null) 'additional_context': additionalContext,
           },
         ),

@@ -296,21 +296,22 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _textController.clear();
     _scrollToBottom();
 
-    final currentGrade = context.read<LanguageProvider>().grade;
+    final langProv = context.read<LanguageProvider>();
 
     try {
       final result = await _api.askQuestion(
         text: questionText.trim(),
-        language: _speakingLanguage ?? context.read<LanguageProvider>().language,
-        grade: currentGrade,
-        childId: context.read<LanguageProvider>().childId,
+        language: langProv.language,
+        grade: langProv.grade,
+        childId: langProv.childId,
+        board: langProv.board,
       );
 
       // Fetch YouTube results if there's a search query
       List<Map<String, dynamic>> ytResults = [];
       final ytQuery = result['youtube_search_query']?.toString();
       if (ytQuery != null && ytQuery.isNotEmpty) {
-        ytResults = await _api.youtubeSearch(query: ytQuery, grade: currentGrade);
+        ytResults = await _api.youtubeSearch(query: ytQuery, grade: langProv.grade);
       }
 
       setState(() {
@@ -432,14 +433,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _scrollToBottom();
 
       if (!mounted) return;
-      final currentGrade = context.read<LanguageProvider>().grade;
-      final language = context.read<LanguageProvider>().language;
+      final langProv = context.read<LanguageProvider>();
 
       final result = await _api.askImage(
         imageBase64: base64Image,
-        language: _speakingLanguage ?? language,
-        grade: currentGrade,
-        childId: context.read<LanguageProvider>().childId,
+        language: _speakingLanguage ?? langProv.language,
+        grade: langProv.grade,
+        childId: langProv.childId,
+        board: langProv.board,
         additionalContext: _textController.text.trim(),
       );
 

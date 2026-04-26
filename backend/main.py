@@ -6,6 +6,8 @@ import os
 import re
 from typing import Literal, Optional
 import json
+from collections import defaultdict
+from datetime import datetime, timedelta
 from cachetools import TTLCache
 from google import genai
 import httpx
@@ -35,6 +37,46 @@ YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
 
 suggestions_cache = TTLCache(maxsize=100, ttl=3600)
 
+# Store last 10 messages per child for context
+conversation_history = defaultdict(list)
+
+def get_conversation_context(child_id: str) -> str:
+    history = conversation_history[child_id]
+    if not history:
+        return ""
+    
+    # Build context string from last 5 exchanges
+    context_parts = []
+    for exchange in history[-5:]:
+        context_parts.append(
+            f"Child asked: {exchange['question']}"
+        )
+        context_parts.append(
+            f"VoiceGuru answered: {exchange['answer'][:100]}..."
+        )
+    return "\n".join(context_parts)
+
+def add_to_history(child_id: str, question: str, answer: str):
+    conversation_history[child_id].append({
+        "question": question,
+        "answer": answer,
+        "timestamp": datetime.now()
+    })
+    # Keep only last 10 exchanges
+    if len(conversation_history[child_id]) > 10:
+        conversation_history[child_id].pop(0)
+
+def clear_old_sessions():
+    """Clear sessions older than 2 hours to save memory."""
+    cutoff = datetime.now() - timedelta(hours=2)
+    for child_id in list(conversation_history.keys()):
+        conversation_history[child_id] = [
+            h for h in conversation_history[child_id]
+            if h['timestamp'] > cutoff
+        ]
+        if not conversation_history[child_id]:
+            del conversation_history[child_id]
+
 app = FastAPI(title="VoiceGuru Backend", version="1.0.0")
 
 app.add_middleware(
@@ -55,6 +97,7 @@ class AskRequest(BaseModel):
     language: Literal["kannada", "hindi", "tamil", "english"] = "english"
     grade: int = Field(default=6, ge=1, le=10)
     child_id: str
+    board: str = "Karnataka State Board"
 
 
 class AskImageRequest(BaseModel):
@@ -233,14 +276,39 @@ def _tts_language_code(language: str) -> str:
     return mapping.get((language or "").strip().lower(), "en-IN")
 
 
-def _tts_voice_name(language: str) -> str:
-    mapping = {
-        "kannada": "kn-IN-Wavenet-A",
-        "hindi": "hi-IN-Wavenet-A",
-        "tamil": "ta-IN-Wavenet-A",
-        "english": "en-IN-Wavenet-A",
-    }
     return mapping.get((language or "").strip().lower(), "en-IN-Wavenet-A")
+
+
+def convert_to_ssml(text: str) -> str:
+    """Convert plain text to SSML with natural pauses and emphasis for child-friendly speech."""
+    # Wrap in SSML speak tags
+    ssml = '<speak>'
+    
+    # Add a warm greeting pause at start
+    ssml += '<prosody rate="90%" pitch="+1.5st">'
+    
+    # Split into sentences and add natural pauses
+    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+    
+    for i, sentence in enumerate(sentences):
+        if not sentence:
+            continue
+            
+        # Add emphasis to key educational terms (capitalized words)
+        sentence = re.sub(
+            r'\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\b',
+            r'<emphasis level="moderate">\1</emphasis>',
+            sentence
+        )
+        
+        ssml += sentence
+        if i < len(sentences) - 1:
+            ssml += '<break time="400ms"/>'
+    
+    ssml += '</prosody>'
+    ssml += '</speak>'
+    
+    return ssml
 
 
 @app.post("/create_user")
@@ -266,15 +334,40 @@ async def create_user(payload: CreateUserRequest):
         return {"status": "error", "message": str(e)}
 
 
+@app.post("/clear_context")
+async def clear_context(child_id: str = Query(...)):
+    """Clears the in-memory conversation context for a specific child."""
+    if child_id in conversation_history:
+        del conversation_history[child_id]
+    return {"status": "success", "message": f"Context cleared for {child_id}"}
+
+
 @app.post("/ask", response_model=AskResponse)
 async def ask(payload: AskRequest) -> AskResponse:
     try:
+        # Get conversation context for memory
+        conversation_ctx = get_conversation_context(payload.child_id)
+        
         pipeline_result = await run_voiceguru_pipeline(
             question=payload.text,
             language=payload.language,
             grade=payload.grade,
             child_id=payload.child_id,
+            conversation_context=conversation_ctx,
+            board=payload.board,
         )
+        
+        # Add current exchange to history
+        add_to_history(
+            payload.child_id, 
+            payload.text, 
+            str(pipeline_result.get("explanation", ""))
+        )
+        
+        # Periodically clear old sessions (every 100 requests roughly)
+        if os.getpid() % 100 == 0:
+            clear_old_sessions()
+            
         response = AskResponse(
             explanation=str(pipeline_result.get("explanation", "")),
             subject=str(pipeline_result.get("subject", "General")),
@@ -617,13 +710,49 @@ async def speak(text: str, language: str) -> SpeakResponse:
             return SpeakResponse(audio_base64="", language=language)
 
         client = texttospeech.TextToSpeechClient()
-        synthesis_input = texttospeech.SynthesisInput(text=text)
+        
+        voice_config = {
+            'kannada': {
+                'language_code': 'kn-IN',
+                'name': 'kn-IN-Wavenet-A',
+                'gender': texttospeech.SsmlVoiceGender.FEMALE
+            },
+            'hindi': {
+                'language_code': 'hi-IN', 
+                'name': 'hi-IN-Wavenet-A',
+                'gender': texttospeech.SsmlVoiceGender.FEMALE
+            },
+            'tamil': {
+                'language_code': 'ta-IN',
+                'name': 'ta-IN-Wavenet-A', 
+                'gender': texttospeech.SsmlVoiceGender.FEMALE
+            },
+            'english': {
+                'language_code': 'en-IN',
+                'name': 'en-IN-Wavenet-D',
+                'gender': texttospeech.SsmlVoiceGender.FEMALE
+            }
+        }
+        
+        config = voice_config.get(language, voice_config['english'])
+        
+        # Use SSML for emotional, natural speech
+        ssml_text = convert_to_ssml(text)
+        
+        synthesis_input = texttospeech.SynthesisInput(ssml=ssml_text)
+        
         voice = texttospeech.VoiceSelectionParams(
-            language_code=_tts_language_code(language),
-            name=_tts_voice_name(language),
+            language_code=config['language_code'],
+            name=config['name'],
+            ssml_gender=config['gender']
         )
+        
         audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.MP3,
+            speaking_rate=0.90,  # Slightly slower = clearer
+            pitch=1.5,           # Slightly higher = friendlier
+            volume_gain_db=1.0,
+            effects_profile_id=['headphone-class-device']
         )
 
         response = await asyncio.to_thread(
