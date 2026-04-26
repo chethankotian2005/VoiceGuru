@@ -428,3 +428,23 @@ async def get_user_profile(child_id: str) -> dict | None:
         return await asyncio.to_thread(_query)
     except Exception:
         return None
+
+async def find_existing_user(name: str, grade: int) -> Optional[str]:
+    try:
+        client = _get_firestore_client()
+        if client is None:
+            return None
+        
+        def _query():
+            users = client.collection("users") \
+                .where("name", "==", name) \
+                .where("grade", "==", grade) \
+                .limit(1) \
+                .get()
+            if users:
+                return users[0].id
+            return None
+            
+        return await asyncio.to_thread(_query)
+    except Exception:
+        return None
