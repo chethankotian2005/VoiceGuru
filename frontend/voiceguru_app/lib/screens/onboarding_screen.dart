@@ -82,19 +82,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
 
     // Also inject child ID manually for API
-    await prefs.setString('voiceguru_child_id', childId);
+    String finalChildId = childId;
+    await prefs.setString('voiceguru_child_id', finalChildId);
 
     // Call backend to create user
     try {
       final apiService = ApiService(baseUrl: backendBaseUrl);
-      await apiService.createUser(
-        childId: childId,
+      final response = await apiService.createUser(
+        childId: finalChildId,
         name: _nameController.text.trim(),
         grade: _selectedGrade,
         board: _selectedBoard,
         language: langProv.language,
         mascot: _selectedMascot,
       );
+
+      if (response != null && response.containsKey('child_id')) {
+        final serverId = response['child_id'];
+        if (serverId != finalChildId) {
+          debugPrint('Duplicate profile detected. Syncing to existing ID: $serverId');
+          finalChildId = serverId;
+          await prefs.setString('voiceguru_child_id', finalChildId);
+          await langProv.loadFromPrefs(); // Sync internal state
+        }
+      }
     } catch (e) {
       debugPrint('Failed to create user on backend: $e');
     }
@@ -104,7 +115,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       MaterialPageRoute(
         builder: (_) => ChatScreen(
           backendBaseUrl: backendBaseUrl,
-          childId: childId,
+          childId: finalChildId,
           isGuest: false,
         ),
       ),

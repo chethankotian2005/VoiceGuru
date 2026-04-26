@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 
 const String baseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://10.36.0.144:8000',
+  defaultValue: 'https://voiceguru-backend.onrender.com',
 );
 
 class ApiService {
@@ -19,7 +19,7 @@ class ApiService {
   Uri _uri(String path) => Uri.parse('$baseUrl$path');
 
   // ─── Create User ───
-  Future<bool> createUser({
+  Future<Map<String, dynamic>?> createUser({
     required String childId,
     required String name,
     required int grade,
@@ -46,10 +46,10 @@ class ApiService {
       ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        return true;
+        return jsonDecode(response.body) as Map<String, dynamic>;
       }
     } catch (_) {}
-    return false;
+    return null;
   }
 
   // ─── Ask question ───

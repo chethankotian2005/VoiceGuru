@@ -965,7 +965,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 crossAxisCount: 2,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: 0.70,
+                childAspectRatio: 0.85, // Slightly wider for better text fit
               ),
               itemCount: _suggestions.length,
               itemBuilder: (context, index) {
@@ -1832,7 +1832,7 @@ class _SuggestionCardState extends State<_SuggestionCard> {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
+                color: Colors.black.withOpacity(0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -1871,20 +1871,16 @@ class _SuggestionCardState extends State<_SuggestionCard> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Expanded(
-                      child: Center(
-                        child: Text(
-                          s.text,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A1C1E),
-                            height: 1.2,
-                          ),
-                          maxLines: 4,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                        ),
+                    Text(
+                      s.text,
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.start,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1C1E),
+                        height: 1.2,
                       ),
                     ),
                     const SizedBox(height: 8),

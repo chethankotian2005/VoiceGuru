@@ -14,7 +14,7 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from firebase_logger import get_child_history, log_question, get_progress_data, get_today_topics, save_quiz_result, save_user_profile
+from firebase_logger import get_child_history, log_question, get_progress_data, get_today_topics, save_quiz_result, save_user_profile, find_existing_user
 from pipeline import run_simplify_pipeline, run_voiceguru_pipeline
 from agents.quiz_agent import generate_quiz as run_quiz_agent
 
@@ -246,17 +246,22 @@ def _tts_voice_name(language: str) -> str:
 @app.post("/create_user")
 async def create_user(payload: CreateUserRequest):
     try:
-        _fire_and_forget_log(
-            save_user_profile(
-                child_id=payload.child_id,
-                name=payload.name,
-                grade=payload.grade,
-                board=payload.board,
-                language=payload.language,
-                mascot=payload.mascot,
-            )
+        # Check for duplicates based on Name and Grade
+        existing_id = await find_existing_user(payload.name, payload.grade)
+        
+        # If user exists, we use their existing ID to avoid duplicates
+        # If not, we use the one provided by the frontend
+        final_id = existing_id if existing_id else payload.child_id
+        
+        await save_user_profile(
+            child_id=final_id,
+            name=payload.name,
+            grade=payload.grade,
+            board=payload.board,
+            language=payload.language,
+            mascot=payload.mascot,
         )
-        return {"status": "success", "child_id": payload.child_id}
+        return {"status": "success", "child_id": final_id}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
