@@ -1,0 +1,7 @@
+﻿flutter_native_splash:
+  color: "#FFFFFF"
+  image: "assets/images/vg_logo.png"
+  android_12:
+    image: "assets/images/vg_logo.png"
+    icon_background_color: "#FFFFFF"
+    color: "#FFFFFF"

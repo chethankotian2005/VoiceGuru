@@ -592,7 +592,7 @@ IMPORTANT TEACHING RULES:
 4. If it is MATH: show working step by step, not just the final answer
 5. If it is a DIAGRAM: label each part and explain what it does
 6. If it is TEXT/QUESTION: identify the concept first, then guide through reasoning
-7. Respond ENTIRELY in {payload.language}
+7. CRITICAL LANGUAGE RULE: You MUST respond ENTIRELY in {payload.language}. Every single word of your explanation, steps, hint, and final answer MUST be translated to {payload.language}. If the language is Kannada/Hindi/Tamil, use the native script. NEVER respond in English unless {payload.language} is English.
 8. Keep it child-friendly for Class {payload.grade} — under 200 words total
 {f'Extra context from student: {payload.additional_context}' if payload.additional_context else ''}
 
