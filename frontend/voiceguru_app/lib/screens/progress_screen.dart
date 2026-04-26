@@ -616,17 +616,52 @@ class _ProgressScreenState extends State<ProgressScreen>
                           strokeWidth: 2, color: kGoogleBlue),
                     ),
                   )
-                : IconButton(
-                    icon: const Icon(Icons.refresh_rounded,
-                        color: kTextSecondary),
-                    onPressed: () async {
-                      _barController.reset();
-                      await context.read<StreakProvider>().fetchProgress(
-                            context.read<LanguageProvider>().childId,
-                            widget.backendBaseUrl,
-                          );
-                      _barController.forward();
-                    },
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: sp.progress.difficultyLevel == 'hard' 
+                              ? Colors.orange.withOpacity(0.1)
+                              : sp.progress.difficultyLevel == 'easy'
+                                  ? Colors.green.withOpacity(0.1)
+                                  : kGoogleBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: sp.progress.difficultyLevel == 'hard' 
+                              ? Colors.orange
+                              : sp.progress.difficultyLevel == 'easy'
+                                  ? Colors.green
+                                  : kGoogleBlue,
+                          )
+                        ),
+                        child: Text(
+                          sp.progress.difficultyLabel,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: sp.progress.difficultyLevel == 'hard' 
+                              ? Colors.orange.shade800
+                              : sp.progress.difficultyLevel == 'easy'
+                                  ? Colors.green.shade800
+                                  : kGoogleBlue,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.refresh_rounded, color: kTextSecondary),
+                        onPressed: () async {
+                          _barController.reset();
+                          await context.read<StreakProvider>().fetchProgress(
+                                context.read<LanguageProvider>().childId,
+                                widget.backendBaseUrl,
+                              );
+                          _barController.forward();
+                        },
+                      ),
+                    ],
                   ),
           ),
         ],

@@ -50,7 +50,7 @@ def _get_client() -> genai.Client | None:
     return None
 
 
-def _build_system_prompt(grade: int, language: str, syllabus_context: str, conversation_context: str = "") -> str:
+def _build_system_prompt(grade: int, language: str, syllabus_context: str, conversation_context: str = "", difficulty: str = "medium") -> str:
     if 1 <= grade <= 4:
         grade_search_context = 'Append "for kids primary school" to the query.'
     elif 5 <= grade <= 6:
@@ -60,8 +60,24 @@ def _build_system_prompt(grade: int, language: str, syllabus_context: str, conve
     else:
         grade_search_context = 'Append "class 9 10 board exam explained" to the query.'
 
+    difficulty_instructions = {
+        'easy': """Use very simple words. 
+               Give extra examples. 
+               Break into tiny steps. 
+               Be extra encouraging.""",
+        'medium': """Use grade-appropriate language.
+                 Give 1-2 examples.
+                 Standard explanation depth.""",
+        'hard': """Use precise terminology.
+               Challenge the student with 
+               follow-up thinking questions.
+               Connect to advanced concepts."""
+    }
+
     return (
         f"You are VoiceGuru, a warm and friendly AI tutor for Class {grade} students.\n\n"
+        f"Student performance level: {difficulty}\n"
+        f"Adjust explanation accordingly:\n{difficulty_instructions.get(difficulty, difficulty_instructions['medium'])}\n\n"
         f"CONVERSATION SO FAR:\n"
         f"{conversation_context if conversation_context else 'This is the start of our conversation.'}\n\n"
         "You MUST respond with a valid JSON object and nothing else — no markdown, "
@@ -161,6 +177,7 @@ async def explain(
     language: str,
     syllabus_context: str,
     conversation_context: str = "",
+    difficulty: str = "medium",
 ) -> dict[str, Any]:
     client = _get_client()
     if client is None:
@@ -183,6 +200,7 @@ async def explain(
                     language=language,
                     syllabus_context=syllabus_context,
                     conversation_context=conversation_context,
+                    difficulty=difficulty,
                 ),
                 response_mime_type="application/json"
             )
@@ -215,6 +233,7 @@ class ExplainerAgent:
         language: str,
         syllabus_context: str,
         conversation_context: str = "",
+        difficulty: str = "medium",
     ) -> dict[str, Any]:
         return await explain(
             question=question,
@@ -223,9 +242,10 @@ class ExplainerAgent:
             language=language,
             syllabus_context=syllabus_context,
             conversation_context=conversation_context,
+            difficulty=difficulty,
         )
 
-    def run(self, question: str, subject: str, grade: int, language: str, syllabus_context: str = "", conversation_context: str = "") -> dict[str, Any]:
+    def run(self, question: str, subject: str, grade: int, language: str, syllabus_context: str = "", conversation_context: str = "", difficulty: str = "medium") -> dict[str, Any]:
         return asyncio.run(
             explain(
                 question=question,
@@ -234,5 +254,6 @@ class ExplainerAgent:
                 language=language,
                 syllabus_context=syllabus_context,
                 conversation_context=conversation_context,
+                difficulty=difficulty,
             )
         )

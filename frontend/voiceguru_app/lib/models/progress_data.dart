@@ -40,6 +40,8 @@ class ProgressData {
   final List<MonthlyData> monthlyData;
   final Map<String, int> subjectBreakdown;
   final List<String> badges;
+  final String difficultyLevel;
+  final String difficultyLabel;
 
   ProgressData({
     required this.streakDays,
@@ -50,6 +52,8 @@ class ProgressData {
     required this.monthlyData,
     required this.subjectBreakdown,
     required this.badges,
+    required this.difficultyLevel,
+    required this.difficultyLabel,
   });
 
   factory ProgressData.empty() {
@@ -77,6 +81,8 @@ class ProgressData {
         'other': 0,
       },
       badges: [],
+      difficultyLevel: 'medium',
+      difficultyLabel: 'Making progress 📚',
     );
   }
 
@@ -102,6 +108,8 @@ class ProgressData {
           .toList(),
       subjectBreakdown: subjectRaw.map((k, v) => MapEntry(k, _asInt(v) ?? 0)),
       badges: badgesRaw.map((e) => e.toString()).toList(),
+      difficultyLevel: json['difficulty_level']?.toString() ?? 'medium',
+      difficultyLabel: json['difficulty_label']?.toString() ?? 'Making progress 📚',
     );
   }
 }

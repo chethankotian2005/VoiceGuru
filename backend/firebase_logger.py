@@ -30,6 +30,7 @@ def _empty_summary() -> dict:
         "subjects_asked": [],
         "most_asked_subject": "",
         "questions": [],
+        "quiz_scores": [],
     }
 
 
@@ -206,11 +207,35 @@ async def get_weekly_summary(child_id: str) -> dict:
             if subjects_count:
                 most_asked_subject = max(subjects_count.items(), key=lambda item: item[1])[0]
 
+            # Fetch recent quiz scores
+            quiz_scores = []
+            try:
+                client = _get_firestore_client()
+                if client:
+                    quiz_docs = (
+                        client.collection("quiz_results")
+                        .where("child_id", "==", child_id)
+                        .order_by("timestamp", direction=firestore.Query.DESCENDING)
+                        .limit(5)
+                        .stream()
+                    )
+                    for qd in quiz_docs:
+                        q_data = qd.to_dict() or {}
+                        quiz_scores.append({
+                            "score": q_data.get("score", 0),
+                            "total": q_data.get("total", 5)
+                        })
+                    # Reverse to get chronological order if needed, but last 5 is fine
+                    quiz_scores.reverse()
+            except Exception as e:
+                pass
+
             return {
                 "total_questions": total_questions,
                 "subjects_asked": list(subjects_count.keys()),
                 "most_asked_subject": most_asked_subject,
                 "questions": questions,
+                "quiz_scores": quiz_scores,
             }
 
         return await asyncio.to_thread(_query)

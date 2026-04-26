@@ -22,6 +22,7 @@ async def run_voiceguru_pipeline(
     child_id: str = "unknown",
     conversation_context: str = "",
     board: str = "Karnataka State Board",
+    difficulty: str = "medium",
 ) -> dict:
     try:
         classification = await classify_question(question)
@@ -43,6 +44,7 @@ async def run_voiceguru_pipeline(
             language=language_used,
             syllabus_context=syllabus_context,
             conversation_context=conversation_context,
+            difficulty=difficulty,
         )
         return {
             "explanation": explainer_result.get("explanation", ""),
@@ -110,7 +112,7 @@ async def run_simplify_pipeline(
         )
 
 
-def run_ask_pipeline(text: str, language: str, grade: int, child_id: str = "unknown", conversation_context: str = "", board: str = "Karnataka State Board") -> dict:
+def run_ask_pipeline(text: str, language: str, grade: int, child_id: str = "unknown", conversation_context: str = "", board: str = "Karnataka State Board", difficulty: str = "medium") -> dict:
     return asyncio.run(
         run_voiceguru_pipeline(
             question=text,
@@ -119,6 +121,7 @@ def run_ask_pipeline(text: str, language: str, grade: int, child_id: str = "unkn
             child_id=child_id,
             conversation_context=conversation_context,
             board=board,
+            difficulty=difficulty,
         )
     )
 

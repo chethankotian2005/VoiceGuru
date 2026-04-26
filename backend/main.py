@@ -228,6 +228,33 @@ class ProgressResponse(BaseModel):
     monthly_data: list[MonthlyData] = []
     subject_breakdown: dict[str, int] = {}
     badges: list[str] = []
+    difficulty_level: str = "medium"
+    difficulty_label: str = "Making progress 📚"
+
+async def get_child_difficulty_level(child_id: str) -> str:
+    from firebase_logger import get_weekly_summary
+    summary = await get_weekly_summary(child_id)
+    
+    quiz_scores = summary.get('quiz_scores', [])
+    if not quiz_scores:
+        return 'medium'
+    
+    # Calculate average score percentage
+    recent_scores = quiz_scores[-5:]  # Last 5 quizzes
+    if not recent_scores:
+        return 'medium'
+        
+    avg = sum(
+        q.get('score', 0) / max(q.get('total', 5), 1) 
+        for q in recent_scores
+    ) / len(recent_scores)
+    
+    if avg >= 0.8:
+        return 'hard'    # Child is excelling
+    elif avg >= 0.5:
+        return 'medium'  # On track
+    else:
+        return 'easy'    # Needs more support
 
 # --------------- Hotword detection ---------------
 
@@ -464,6 +491,8 @@ async def ask(payload: AskRequest) -> AskResponse:
         # Get conversation context for memory
         conversation_ctx = get_conversation_context(payload.child_id)
         
+        difficulty = await get_child_difficulty_level(payload.child_id)
+        
         pipeline_result = await run_voiceguru_pipeline(
             question=payload.text,
             language=payload.language,
@@ -471,6 +500,7 @@ async def ask(payload: AskRequest) -> AskResponse:
             child_id=payload.child_id,
             conversation_context=conversation_ctx,
             board=payload.board,
+            difficulty=difficulty,
         )
         
         # Add current exchange to history
@@ -1026,9 +1056,12 @@ async def youtube_search(
 
 
 @app.get("/suggestions", response_model=SuggestionsResponse)
-async def get_suggestions(grade: int, language: str, subject: Optional[str] = None):
+async def get_suggestions(grade: int, language: str, subject: Optional[str] = None, child_id: Optional[str] = None):
     language = str(language).lower().strip()
-    cache_key = f"{grade}_{language}_{subject}"
+    
+    difficulty = await get_child_difficulty_level(child_id) if child_id else "medium"
+    
+    cache_key = f"{grade}_{language}_{subject}_{difficulty}"
     
     if cache_key in suggestions_cache:
         return SuggestionsResponse(suggestions=suggestions_cache[cache_key])
@@ -1063,9 +1096,18 @@ async def get_suggestions(grade: int, language: str, subject: Optional[str] = No
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
         
+        difficulty_prompt = ""
+        if difficulty == "hard":
+            difficulty_prompt = "- Challenge the student: suggest advanced and challenging topics.\n"
+        elif difficulty == "easy":
+            difficulty_prompt = "- Build foundations: suggest basic and foundational topics.\n"
+
         prompt = f"""Generate 6 topic suggestions for a Grade {grade} student exploring educational content.
 The language of the response and suggestions MUST be {language}. If {language} is not English, translate everything to {language} accurately.
 {f'Focus slightly on the subject: {subject}.' if subject else ''}
+
+Student performance level: {difficulty}
+{difficulty_prompt}
 
 Output strictly valid JSON with this exact schema:
 [
@@ -1117,6 +1159,17 @@ Requirements:
 @app.get("/progress/{child_id}", response_model=ProgressResponse)
 async def progress(child_id: str):
     data = await get_progress_data(child_id)
+    
+    difficulty = await get_child_difficulty_level(child_id)
+    labels = {
+        "easy": "Building foundations 🌱",
+        "medium": "Making progress 📚", 
+        "hard": "Advanced learner 🚀"
+    }
+    
+    data["difficulty_level"] = difficulty
+    data["difficulty_label"] = labels.get(difficulty, labels["medium"])
+    
     return ProgressResponse(**data)
 
 
