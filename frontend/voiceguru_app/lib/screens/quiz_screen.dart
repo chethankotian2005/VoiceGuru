@@ -20,12 +20,14 @@ class QuizScreen extends StatefulWidget {
     required this.language,
     required this.childId,
     required this.backendBaseUrl,
+    this.onBackToLearning,
   });
 
   final int grade;
   final String language;
   final String childId;
   final String backendBaseUrl;
+  final VoidCallback? onBackToLearning;
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
@@ -733,7 +735,13 @@ class _QuizScreenState extends State<QuizScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    if (widget.onBackToLearning != null) {
+                      widget.onBackToLearning!();
+                    } else {
+                      Navigator.pop(context);
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: kGoogleBlue,
                     foregroundColor: Colors.white,

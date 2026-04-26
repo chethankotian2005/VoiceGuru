@@ -797,6 +797,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             language: lang,
             childId: context.read<LanguageProvider>().childId,
             backendBaseUrl: widget.backendBaseUrl,
+            onBackToLearning: () {
+              setState(() => _selectedIndex = 0);
+            },
           ),
         ],
       ),
