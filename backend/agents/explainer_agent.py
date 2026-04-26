@@ -28,6 +28,8 @@ VALID_DIAGRAM_TYPES = {
     "solar_system",
     "circuit",
     "bar_chart",
+    "fraction_bar",
+    "cell_diagram",
     "none",
 }
 
@@ -89,7 +91,7 @@ def _build_system_prompt(grade: int, language: str, syllabus_context: str, conve
         '  "diagram_description": "describe what diagram would help, or null",\n'
         '  "diagram_type": "one of: ray_diagram | food_chain | water_cycle | '
         "number_line | geometric_shape | human_body | solar_system | circuit | "
-        'bar_chart | none",\n'
+        'bar_chart | fraction_bar | cell_diagram | none",\n'
         '  "youtube_search_query": "specific educational search query for YouTube, or null",\n'
         '  "key_terms": ["term1", "term2"]\n'
         "}\n\n"
@@ -106,10 +108,41 @@ def _build_system_prompt(grade: int, language: str, syllabus_context: str, conve
         "7. If student says 'exam ready answer' or 'in short' or 'now explain formally' — reformat your previous answer accordingly.\n"
         "8. Stay on the SAME TOPIC until student clearly changes subject.\n"
         "9. Never use markdown, bullet points, or special characters in the explanation text.\n"
-        "10. Set needs_diagram to true for ANY visual concept (Science diagrams, Math geometry, Ecology, Human body).\n"
-        "11. ALWAYS provide a youtube_search_query. Never set it to null. "
-        f"Make it a specific, educational search query. {grade_search_context}\n"
-        "12. For diagram_type, you MUST pick an exact match from the allowed list or 'none'.\n\n"
+        "10. ALWAYS provide a youtube_search_query. Never set it to null. "
+        f"Make it a specific, educational search query. {grade_search_context}\n\n"
+        "DIAGRAM SELECTION RULES — be very precise:\n"
+        "Set needs_diagram=true ONLY when a visual would genuinely help understand the concept.\n"
+        "Set needs_diagram=false for pure calculation questions, definitions, history, or anything text-only.\n"
+        "\n"
+        "diagram_type must be chosen from this list:\n"
+        "- 'geometric_shape': ONLY for questions specifically about triangles, circles, squares, angles, polygons. DO NOT use for general math.\n"
+        "- 'number_line': for fractions, integers, decimals, negative numbers, number ordering\n"
+        "- 'bar_chart': for statistics, data, comparison problems\n"
+        "- 'ray_diagram': for light, optics, reflection, refraction\n"
+        "- 'food_chain': for ecology, food webs, energy flow\n"
+        "- 'water_cycle': for water cycle, evaporation, rain\n"
+        "- 'solar_system': for planets, space, astronomy\n"
+        "- 'circuit': for electricity, circuits, current\n"
+        "- 'human_body': for body parts, organs, systems\n"
+        "- 'cell_diagram': for biology, cells, plant/animal cell\n"
+        "- 'fraction_bar': for fraction questions, division concepts\n"
+        "- 'none': for everything else including:\n"
+        "  * Word problems (use none, just solve step by step)\n"
+        "  * Algebra (use none)\n"
+        "  * Optical illusions (use none — cannot draw illusions)\n"
+        "  * History, geography, definitions (use none)\n"
+        "  * Any topic not in the above specific list\n"
+        "\n"
+        "EXAMPLES:\n"
+        "Q: 'What is a triangle?' → geometric_shape ✓\n"
+        "Q: 'Solve 3x + 5 = 20' → none ✓  \n"
+        "Q: 'Explain fractions' → fraction_bar ✓\n"
+        "Q: 'Explain optical illusions' → none ✓\n"
+        "Q: 'What is photosynthesis' → food_chain ✗, use none ✓\n"
+        "Q: 'How does light refract' → ray_diagram ✓\n"
+        "Q: 'What is 25% of 80' → none ✓ (calculation, no diagram)\n"
+        "\n"
+        "If you are unsure, choose 'none'. A missing diagram is better than a wrong diagram.\n\n"
         f"SYLLABUS CONTEXT:\n{syllabus_context}"
     )
 

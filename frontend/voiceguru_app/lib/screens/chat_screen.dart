@@ -733,7 +733,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final quizAvailable = sp.progress.todayQuestions >= 3 && !widget.isGuest;
 
     return Scaffold(
-      backgroundColor: kGoogleLightGray,
+      backgroundColor: kBackground,
       appBar: _selectedIndex == 0 ? _buildAppBar() : null,
       body: IndexedStack(
         index: _selectedIndex,
@@ -1435,7 +1435,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               ),
 
             // Section B â€” Diagram
-            if (msg.needsDiagram && msg.diagramType != 'none')
+            if (msg.needsDiagram && msg.diagramType != 'none' && msg.diagramType != 'null' && msg.diagramType.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                 child: Column(

@@ -616,7 +616,6 @@ class _ProgressScreenState extends State<ProgressScreen>
                           strokeWidth: 2, color: kGoogleBlue),
                     ),
                   )
-                  )
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [

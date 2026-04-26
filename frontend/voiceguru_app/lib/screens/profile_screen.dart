@@ -7,6 +7,7 @@ import '../providers/language_provider.dart';
 import 'onboarding_screen.dart';
 import 'share_screen.dart';
 import '../l10n/app_strings.dart';
+import '../services/api_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});

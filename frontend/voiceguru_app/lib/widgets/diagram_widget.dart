@@ -192,6 +192,12 @@ class _DiagramPainter extends CustomPainter {
       case 'bar_chart':
         _drawBarChart(canvas, size);
         break;
+      case 'fraction_bar':
+        _drawFractionBar(canvas, size);
+        break;
+      case 'cell_diagram':
+        _drawCellDiagram(canvas, size);
+        break;
       default:
         break;
     }
@@ -565,6 +571,99 @@ class _DiagramPainter extends CustomPainter {
       );
       _drawLabel(canvas, labels[i], Offset(x + barW / 2, chartH + 10), fontSize: 9);
     }
+  }
+
+  // ─── Fraction Bar ───
+  void _drawFractionBar(Canvas canvas, Size size) {
+    int numerator = 3;
+    int denominator = 4;
+
+    // Try to parse fraction from description
+    final match = RegExp(r'(\d+)\s*(?:/|out of)\s*(\d+)').firstMatch(description.toLowerCase());
+    if (match != null) {
+      numerator = int.tryParse(match.group(1) ?? '3') ?? 3;
+      denominator = int.tryParse(match.group(2) ?? '4') ?? 4;
+      if (denominator <= 0) denominator = 4;
+      if (numerator > denominator) numerator = denominator;
+    }
+
+    final paint = _bluePaint..strokeWidth = 2;
+    final fillPaint = Paint()..color = _blue.withOpacity(0.4)..style = PaintingStyle.fill;
+    
+    final margin = 40.0;
+    final barW = size.width - margin * 2;
+    final barH = 50.0;
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    
+    final rect = Rect.fromCenter(center: Offset(cx, cy - 10), width: barW, height: barH);
+    
+    // Draw outer box
+    canvas.drawRect(rect, paint);
+    
+    final partW = barW / denominator;
+    
+    // Draw shaded parts and lines
+    for (var i = 0; i < denominator; i++) {
+      final partRect = Rect.fromLTWH(rect.left + i * partW, rect.top, partW, barH);
+      if (i < numerator) {
+        canvas.drawRect(partRect, fillPaint);
+      }
+      if (i > 0) {
+        canvas.drawLine(Offset(rect.left + i * partW, rect.top), Offset(rect.left + i * partW, rect.bottom), paint);
+      }
+    }
+    
+    _drawLabel(canvas, '$numerator out of $denominator parts', Offset(cx, cy + 30), fontSize: 12, color: kTextPrimary);
+  }
+
+  // ─── Cell Diagram ───
+  void _drawCellDiagram(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    
+    final isPlant = description.toLowerCase().contains('plant');
+    final membraneColor = isPlant ? _green : _blue;
+    final membranePaint = Paint()..color = membraneColor..strokeWidth = 3..style = PaintingStyle.stroke;
+    final fillPaint = Paint()..color = membraneColor.withOpacity(0.1)..style = PaintingStyle.fill;
+
+    // Cell membrane (Oval for animal, slightly squarish oval for plant but oval is fine)
+    final cellRect = Rect.fromCenter(center: Offset(cx, cy - 10), width: 160, height: 110);
+    
+    if (isPlant) {
+      canvas.drawRRect(RRect.fromRectAndRadius(cellRect, const Radius.circular(20)), fillPaint);
+      canvas.drawRRect(RRect.fromRectAndRadius(cellRect, const Radius.circular(20)), membranePaint);
+    } else {
+      canvas.drawOval(cellRect, fillPaint);
+      canvas.drawOval(cellRect, membranePaint);
+    }
+    _drawLabel(canvas, 'Cell Membrane', Offset(cx, cy - 80), fontSize: 9, color: membraneColor);
+
+    // Nucleus
+    canvas.drawCircle(Offset(cx - 20, cy - 10), 20, Paint()..color = _yellow..style = PaintingStyle.fill);
+    canvas.drawCircle(Offset(cx - 20, cy - 10), 20, Paint()..color = Colors.orange..style = PaintingStyle.stroke..strokeWidth = 2);
+    _drawLabel(canvas, 'Nucleus', Offset(cx - 20, cy - 10), fontSize: 9);
+
+    // Mitochondria
+    final mitoPaint = Paint()..color = _red.withOpacity(0.7)..style = PaintingStyle.fill;
+    final mitoRect1 = Rect.fromCenter(center: Offset(cx + 40, cy - 30), width: 15, height: 8);
+    final mitoRect2 = Rect.fromCenter(center: Offset(cx + 30, cy + 20), width: 15, height: 8);
+    canvas.drawRRect(RRect.fromRectAndRadius(mitoRect1, const Radius.circular(4)), mitoPaint);
+    canvas.drawRRect(RRect.fromRectAndRadius(mitoRect2, const Radius.circular(4)), mitoPaint);
+    _drawLabel(canvas, 'Mitochondria', Offset(cx + 40, cy + 35), fontSize: 9, color: _red);
+
+    // Cytoplasm
+    final cytoPaint = Paint()..color = membraneColor.withOpacity(0.4)..style = PaintingStyle.fill;
+    final random = Random(42); // fixed seed for consistent rendering
+    for (var i = 0; i < 20; i++) {
+      final dx = cx - 60 + random.nextDouble() * 120;
+      final dy = cy - 40 + random.nextDouble() * 80;
+      // Simple bound check rough
+      if (pow(dx - cx, 2) / pow(80, 2) + pow(dy - (cy - 10), 2) / pow(55, 2) < 0.8) {
+        canvas.drawCircle(Offset(dx, dy), 1.5, cytoPaint);
+      }
+    }
+    _drawLabel(canvas, 'Cytoplasm', Offset(cx - 50, cy + 30), fontSize: 9, color: membraneColor);
   }
 }
 
