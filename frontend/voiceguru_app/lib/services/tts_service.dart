@@ -11,7 +11,8 @@ class TtsService {
   final String baseUrl;
   final FlutterTts _flutterTts = FlutterTts();
   final AudioPlayer _player = AudioPlayer();
-  bool isPlaying = false;
+  bool _isPlaying = false;
+  bool get isPlaying => _isPlaying;
   String? _lastTempFile;
 
   final Map<String, String> _ttsLanguageMap = {
@@ -28,7 +29,7 @@ class TtsService {
     await _flutterTts.setSpeechRate(0.45);
     await _flutterTts.setPitch(1.1);
     _flutterTts.setCompletionHandler(() {
-      isPlaying = false;
+      _isPlaying = false;
     });
   }
 
@@ -36,11 +37,11 @@ class TtsService {
     if (text.isEmpty) return;
 
     try {
-      if (isPlaying) {
+      if (_isPlaying) {
         await stop();
       }
 
-      isPlaying = true;
+      _isPlaying = true;
 
       // Try backend Google TTS first (better quality)
       final uri = Uri.parse(
@@ -70,7 +71,7 @@ class TtsService {
             await _player.setFilePath(filePath);
             _player.playerStateStream.listen((state) {
               if (state.processingState == ProcessingState.completed) {
-                isPlaying = false;
+                _isPlaying = false;
               }
             });
             await _player.play();
@@ -99,7 +100,7 @@ class TtsService {
   }
 
   Future<void> stop() async {
-    isPlaying = false;
+    _isPlaying = false;
     await _player.stop();
     await _flutterTts.stop();
   }

@@ -95,6 +95,7 @@ String _sanitizeForUi(String input) {
 
 class ChatMessage {
   ChatMessage({
+    String? id,
     required this.sender,
     required String text,
     this.inputType = InputType.text,
@@ -110,8 +111,10 @@ class ChatMessage {
     this.steps = const [],
     this.finalAnswer,
     this.hint,
-  }) : text = _sanitizeForUi(text);
+  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+       text = _sanitizeForUi(text);
 
+  final String id;
   final MessageSender sender;
   String text;
   final InputType inputType;
@@ -176,6 +179,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   bool _hasText = false;
   String? _detectedLanguage;
   String? _speakingLanguage;
+  String? _currentlyPlayingMessageId;
 
   // Pulse animation for mic
   late AnimationController _pulseController;
@@ -289,6 +293,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   // ─── Send question (text) ───
   Future<void> _sendQuestion(String questionText, {InputType type = InputType.text}) async {
+    if (_tts.isPlaying) {
+      await _tts.stop();
+      if (mounted) setState(() => _currentlyPlayingMessageId = null);
+    }
     if (questionText.trim().isEmpty) return;
 
     HapticFeedback.lightImpact();
@@ -330,6 +338,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         ytResults = await _api.youtubeSearch(query: ytQuery, grade: langProv.grade);
       }
 
+      final newId = DateTime.now().microsecondsSinceEpoch.toString();
       setState(() {
         _messages.removeLast(); // Remove loading message
 
@@ -345,6 +354,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         }
 
         _messages.add(ChatMessage(
+          id: newId,
           sender: MessageSender.ai,
           text: result['explanation']?.toString() ?? '',
           subject: result['subject']?.toString(),
@@ -362,13 +372,18 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         _detectedLanguage = result['language']?.toString();
         _mascotState = MascotState.bouncy;
         _showXpToast = true;
+        _currentlyPlayingMessageId = newId;
       });
       HapticFeedback.mediumImpact();
       _playSound('chime');
       _scrollToBottom();
 
       // Auto speak the response
-      await _speak(result['explanation']?.toString() ?? '');
+      unawaited(_speak(result['explanation']?.toString() ?? '').then((_) {
+        if (mounted && _currentlyPlayingMessageId == newId) {
+          setState(() => _currentlyPlayingMessageId = null);
+        }
+      }));
 
       // Refresh progress after successful answer
       _fetchProgress();
@@ -424,6 +439,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _pickImageAndSend(ImageSource source) async {
+    if (_tts.isPlaying) {
+      await _tts.stop();
+      if (mounted) setState(() => _currentlyPlayingMessageId = null);
+    }
     try {
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(source: source, maxWidth: 1024, maxHeight: 1024, imageQuality: 80);
@@ -469,6 +488,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       }
 
       if (!mounted) return;
+      final newId = DateTime.now().microsecondsSinceEpoch.toString();
       setState(() {
         _messages.removeLast(); // Remove loading message
 
@@ -478,6 +498,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             : <String>[];
 
         _messages.add(ChatMessage(
+          id: newId,
           sender: MessageSender.ai,
           text: result['explanation']?.toString() ?? '',
           subject: result['subject']?.toString(),
@@ -495,8 +516,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           hint: result['hint']?.toString(),
         ));
         _hotwordState = HotwordState.idle;
+        _currentlyPlayingMessageId = newId;
       });
       _scrollToBottom();
+      
+      unawaited(_speak(result['explanation']?.toString() ?? '').then((_) {
+        if (mounted && _currentlyPlayingMessageId == newId) {
+          setState(() => _currentlyPlayingMessageId = null);
+        }
+      }));
+
       _fetchProgress();
     } catch (e) {
       if (!mounted) return;
@@ -513,6 +542,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   // ─── Simplify ───
   Future<void> _simplify(int messageIndex) async {
+    if (_tts.isPlaying) {
+      await _tts.stop();
+      if (mounted) setState(() => _currentlyPlayingMessageId = null);
+    }
     if (messageIndex < 0 || messageIndex >= _messages.length) return;
     final original = _messages[messageIndex];
 
@@ -543,15 +576,24 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         childId: context.read<LanguageProvider>().childId,
       );
 
+      final newId = DateTime.now().microsecondsSinceEpoch.toString();
       setState(() {
         _messages.removeLast();
         _messages.add(ChatMessage(
+          id: newId,
           sender: MessageSender.ai,
           text: result['simplified_explanation']?.toString() ??
               'Could not simplify right now.',
         ));
+        _currentlyPlayingMessageId = newId;
       });
       _scrollToBottom();
+      
+      unawaited(_speak(result['simplified_explanation']?.toString() ?? 'Could not simplify right now.').then((_) {
+        if (mounted && _currentlyPlayingMessageId == newId) {
+          setState(() => _currentlyPlayingMessageId = null);
+        }
+      }));
     } catch (_) {
       setState(() {
         _messages.removeLast();
@@ -1516,6 +1558,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                     DiagramWidget(
                       type: msg.diagramType,
                       description: msg.diagramDescription ?? '',
+                      language: _detectedLanguage ?? lang,
                     ),
                   ],
                 ),
@@ -1560,17 +1603,42 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
               child: Row(
                 children: [
-                  TextButton.icon(
-                    onPressed: () => _speak(msg.text),
-                    icon: const Icon(Icons.volume_up_rounded, size: 18),
-                    label: Text(AppStrings.get('listen', lang),
-                        style: TextStyle(fontSize: 13)),
-                    style: TextButton.styleFrom(
-                      foregroundColor: kGoogleBlue,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      visualDensity: VisualDensity.compact,
+                  if (_tts.isPlaying && _currentlyPlayingMessageId == msg.id)
+                    TextButton.icon(
+                      onPressed: () async {
+                        await _tts.stop();
+                        setState(() => _currentlyPlayingMessageId = null);
+                      },
+                      icon: const Icon(Icons.stop_circle_rounded, color: Colors.red, size: 18),
+                      label: const Text('Stop', style: TextStyle(color: Colors.red, fontSize: 13)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    )
+                  else
+                    TextButton.icon(
+                      onPressed: () async {
+                        if (_tts.isPlaying) {
+                          await _tts.stop();
+                        }
+                        if (!mounted) return;
+                        setState(() => _currentlyPlayingMessageId = msg.id);
+                        unawaited(_speak(msg.text).then((_) {
+                          if (mounted && _currentlyPlayingMessageId == msg.id) {
+                            setState(() => _currentlyPlayingMessageId = null);
+                          }
+                        }));
+                      },
+                      icon: const Icon(Icons.volume_up_rounded, size: 18),
+                      label: Text(AppStrings.get('listen', lang),
+                          style: TextStyle(fontSize: 13)),
+                      style: TextButton.styleFrom(
+                        foregroundColor: kGoogleBlue,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        visualDensity: VisualDensity.compact,
+                      ),
                     ),
-                  ),
                   TextButton.icon(
                     onPressed: () => _simplify(index),
                     icon: const Icon(Icons.refresh_rounded, size: 18),

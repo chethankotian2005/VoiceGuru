@@ -4,7 +4,7 @@ import asyncio
 import os
 from datetime import datetime, timedelta, timezone
 from threading import Lock
-from typing import Any
+from typing import Any, Optional
 
 try:
     import firebase_admin

@@ -30,6 +30,7 @@ VALID_DIAGRAM_TYPES = {
     "bar_chart",
     "fraction_bar",
     "cell_diagram",
+    "plant_diagram",
     "none",
 }
 
@@ -120,10 +121,8 @@ def _build_system_prompt(grade: int, language: str, syllabus_context: str, conve
         "{\n"
         '  "explanation": "child-friendly text explanation",\n'
         '  "needs_diagram": true or false,\n'
-        '  "diagram_description": "describe what diagram would help, or null",\n'
-        '  "diagram_type": "one of: ray_diagram | food_chain | water_cycle | '
-        "number_line | geometric_shape | human_body | solar_system | circuit | "
-        'bar_chart | fraction_bar | cell_diagram | none",\n'
+        f'  "diagram_description": "Describe what to draw. Write ALL labels and text in {language}. Example for kannada: instead of \'Nucleus\' write \'ನ್ಯೂಕ್ಲಿಯಸ್\'. Example for hindi: instead of \'Nucleus\' write \'केंद्रक\'. Be specific: mention actual values, variable names, or concept terms from the question in {language}.",\n'
+        '  "diagram_type": "Choose the MOST SPECIFIC type: geometric_shape, number_line, fraction_bar, bar_chart, ray_diagram, food_chain, water_cycle, solar_system, circuit, human_body, cell_diagram, plant_diagram, none",\n'
         '  "youtube_search_query": "specific educational search query for YouTube, or null",\n'
         '  "key_terms": ["term1", "term2"]\n'
         "}\n\n"
@@ -138,25 +137,21 @@ def _build_system_prompt(grade: int, language: str, syllabus_context: str, conve
         "DIAGRAM SELECTION RULES — be very precise:\n"
         "Set needs_diagram=true ONLY when a visual would genuinely help understand the concept.\n"
         "Set needs_diagram=false for pure calculation questions, definitions, history, or anything text-only.\n"
-        "\n"
+        f"When writing diagram_description, write all labels in {language} not in English.\n"
         "diagram_type must be chosen from this list:\n"
-        "- 'geometric_shape': ONLY for questions specifically about triangles, circles, squares, angles, polygons. DO NOT use for general math.\n"
-        "- 'number_line': for fractions, integers, decimals, negative numbers, number ordering\n"
-        "- 'bar_chart': for statistics, data, comparison problems\n"
-        "- 'ray_diagram': for light, optics, reflection, refraction\n"
-        "- 'food_chain': for ecology, food webs, energy flow\n"
-        "- 'water_cycle': for water cycle, evaporation, rain\n"
-        "- 'solar_system': for planets, space, astronomy\n"
-        "- 'circuit': for electricity, circuits, current\n"
-        "- 'human_body': for body parts, organs, systems\n"
-        "- 'cell_diagram': for biology, cells, plant/animal cell\n"
-        "- 'fraction_bar': for fraction questions, division concepts\n"
-        "- 'none': for everything else including:\n"
-        "  * Word problems (use none, just solve step by step)\n"
-        "  * Algebra (use none)\n"
-        "  * Optical illusions (use none — cannot draw illusions)\n"
-        "  * History, geography, definitions (use none)\n"
-        "  * Any topic not in the above specific list\n"
+        "- 'geometric_shape': ONLY for actual geometry questions about shapes (triangles, circles, angles)\n"
+        "- 'number_line': fractions, integers, number ordering\n"
+        "- 'fraction_bar': fraction visualization, part-whole\n"
+        "- 'bar_chart': statistics, data comparison\n"
+        "- 'ray_diagram': light, optics, lenses\n"
+        "- 'food_chain': ecology, energy flow\n"
+        "- 'water_cycle': evaporation, precipitation, runoff  \n"
+        "- 'solar_system': planets, space\n"
+        "- 'circuit': electricity, current, resistance\n"
+        "- 'human_body': organs, body systems\n"
+        "- 'cell_diagram': biology cells, plant/animal\n"
+        "- 'plant_diagram': photosynthesis, plant parts\n"
+        "- 'none': for word problems, history, definitions, calculations, optical illusions, algebra\n"
         "\n"
         "EXAMPLES:\n"
         "Q: 'What is a triangle?' → geometric_shape ✓\n"

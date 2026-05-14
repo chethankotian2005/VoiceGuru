@@ -10,10 +10,12 @@ class DiagramWidget extends StatelessWidget {
     super.key,
     required this.type,
     required this.description,
+    this.language = 'english',
   });
 
   final String type;
   final String description;
+  final String language;
 
   void _showZoomableDiagram(BuildContext context) {
     showDialog(
@@ -72,7 +74,7 @@ class DiagramWidget extends StatelessWidget {
                       width: MediaQuery.of(context).size.width,
                       height: 350,
                       child: CustomPaint(
-                        painter: _DiagramPainter(type: type, description: description),
+                        painter: _DiagramPainter(type: type, description: description, language: language),
                       ),
                     ),
                   ),
@@ -131,14 +133,14 @@ class DiagramWidget extends StatelessWidget {
               width: double.infinity,
               height: 180,
               child: CustomPaint(
-                painter: _DiagramPainter(type: type, description: description),
+                painter: _DiagramPainter(type: type, description: description, language: language),
               ),
             ),
             // Caption
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
               child: Text(
-                'Tap diagram to zoom and explore interactively',
+                _DiagramPainter._label(language, 'tap_zoom'),
                 style: TextStyle(
                   fontSize: 11,
                   color: kTextSecondary,
@@ -157,10 +159,101 @@ class DiagramWidget extends StatelessWidget {
 //  Custom Painter
 // ────────────────────────────────────────────────â”€
 class _DiagramPainter extends CustomPainter {
-  _DiagramPainter({required this.type, required this.description});
+  _DiagramPainter({required this.type, required this.description, required this.language});
 
   final String type;
   final String description;
+  final String language;
+
+  static const Map<String, Map<String, String>> _diagramLabels = {
+    'english': {
+      'nucleus': 'Nucleus',
+      'cell_membrane': 'Cell Membrane',
+      'cytoplasm': 'Cytoplasm',
+      'chloroplast': 'Chloroplast',
+      'sun': 'Sun',
+      'plant': 'Plant',
+      'animal': 'Animal',
+      'water': 'Water',
+      'cloud': 'Cloud',
+      'rain': 'Rain',
+      'evaporation': 'Evaporation',
+      'tap_zoom': 'Tap diagram to zoom and explore interactively',
+      'diagram_label': 'Visual Explanation',
+      'source': 'Source',
+      'particles': 'Particles',
+      'observer': 'Observer',
+      'herbivore': 'Herbivore',
+      'carnivore': 'Carnivore',
+      'heart': 'Heart',
+      'brain': 'Brain',
+      'stomach': 'Stomach',
+      'battery': 'Battery',
+      'resistor': 'Resistor',
+      'bulb': 'Bulb',
+      'switch': 'Switch',
+      'mercury': 'Me',
+      'venus': 'Ve',
+      'earth': 'Ea',
+      'mars': 'Ma',
+      'jupiter': 'Ju',
+      'saturn': 'Sa',
+      'mitochondria': 'Mitochondria',
+    },
+    'kannada': {
+      'nucleus': 'ನ್ಯೂಕ್ಲಿಯಸ್',
+      'cell_membrane': 'ಜೀವಕೋಶ ಪೊರೆ',
+      'cytoplasm': 'ಸೈಟೋಪ್ಲಾಸಂ',
+      'chloroplast': 'ಕ್ಲೋರೋಪ್ಲಾಸ್ಟ್',
+      'sun': 'ಸೂರ್ಯ',
+      'plant': 'ಸಸ್ಯ',
+      'animal': 'ಪ್ರಾಣಿ',
+      'water': 'ನೀರು',
+      'cloud': 'ಮೋಡ',
+      'rain': 'ಮಳೆ',
+      'evaporation': 'ಆವಿಯಾಗುವಿಕೆ',
+      'tap_zoom': 'ಜ಼ೂಮ್ ಮಾಡಲು ಟ್ಯಾಪ್ ಮಾಡಿ',
+      'diagram_label': 'ದೃಶ್ಯ ವಿವರಣೆ',
+    },
+    'hindi': {
+      'nucleus': 'केंद्रक',
+      'cell_membrane': 'कोशिका झिल्ली',
+      'cytoplasm': 'कोशिकाद्रव्य',
+      'chloroplast': 'हरितलवक',
+      'sun': 'सूर्य',
+      'plant': 'पौधा',
+      'animal': 'जानवर',
+      'water': 'पानी',
+      'cloud': 'बादल',
+      'rain': 'बारिश',
+      'evaporation': 'वाष्पीकरण',
+      'tap_zoom': 'ज़ूम के लिए टैप करें',
+      'diagram_label': 'दृश्य स्पष्टीकरण',
+    },
+    'tamil': {
+      'nucleus': 'உட்கரு',
+      'cell_membrane': 'செல் சவ்வு',
+      'cytoplasm': 'செல்திரவம்',
+      'chloroplast': 'குளோரோபிளாஸ்ட்',
+      'sun': 'சூரியன்',
+      'plant': 'தாவரம்',
+      'animal': 'விலங்கு',
+      'water': 'தண்ணீர்',
+      'cloud': 'மேகம்',
+      'rain': 'மழை',
+      'evaporation': 'ஆவியாதல்',
+      'tap_zoom': 'பெரிதாக்க தட்டவும்',
+      'diagram_label': 'காட்சி விளக்கம்',
+    },
+  };
+
+  static String _label(String lang, String key) {
+    return _diagramLabels[lang]?[key] 
+      ?? _diagramLabels['english']?[key] 
+      ?? key;
+  }
+  
+  String get l => language;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -270,7 +363,7 @@ class _DiagramPainter extends CustomPainter {
     // Light source (circle)
     canvas.drawCircle(Offset(40, cy), 15, _fillBlue);
     canvas.drawCircle(Offset(40, cy), 15, paint);
-    _drawLabel(canvas, 'Source', Offset(40, cy + 26));
+    _drawLabel(canvas, _label(l, 'source'), Offset(40, cy + 26));
 
     // Rays going to scattering point
     final scatterX = size.width * 0.5;
@@ -285,7 +378,7 @@ class _DiagramPainter extends CustomPainter {
       final dy = cy + (i ~/ 3 - 0.5) * 14;
       canvas.drawCircle(Offset(dx, dy), 4, scatter);
     }
-    _drawLabel(canvas, 'Particles', Offset(scatterX, cy + 30));
+    _drawLabel(canvas, _label(l, 'particles'), Offset(scatterX, cy + 30));
 
     // Scattered rays
     final eyeX = size.width - 50.0;
@@ -301,12 +394,12 @@ class _DiagramPainter extends CustomPainter {
         Rect.fromCenter(center: Offset(eyeX, cy), width: 22, height: 14),
         _bluePaint);
     canvas.drawCircle(Offset(eyeX, cy), 4, Paint()..color = _blue);
-    _drawLabel(canvas, 'Observer', Offset(eyeX, cy + 20));
+    _drawLabel(canvas, _label(l, 'observer'), Offset(eyeX, cy + 20));
   }
 
   // ─── Food Chain ───
   void _drawFoodChain(Canvas canvas, Size size) {
-    final labels = ['â˜€ï¸ Sun', '🌱 Plant', 'ðŸ° Herbivore', 'ðŸ¦ Carnivore'];
+    final labels = ['☀️ ${_label(l, "sun")}', '🌱 ${_label(l, "plant")}', '🐇 ${_label(l, "herbivore")}', '🦅 ${_label(l, "carnivore")}'];
     final boxW = (size.width - 60) / 4;
     const boxH = 40.0;
     final cy = size.height / 2;
@@ -349,7 +442,7 @@ class _DiagramPainter extends CustomPainter {
       RRect.fromRectAndRadius(waterRect, const Radius.circular(6)),
       paint,
     );
-    _drawLabel(canvas, 'Water', Offset(size.width / 2, size.height - 28));
+    _drawLabel(canvas, _label(l, 'water'), Offset(size.width / 2, size.height - 28));
 
     // Evaporation arrows (up)
     final evapPaint = Paint()..color = _blue..strokeWidth = 2..style = PaintingStyle.stroke;
@@ -357,7 +450,7 @@ class _DiagramPainter extends CustomPainter {
       final x = size.width * 0.25 + i * size.width * 0.2;
       _drawArrow(canvas, Offset(x, size.height - 48), Offset(x, 60), evapPaint);
     }
-    _drawLabel(canvas, 'Evaporation ↑', Offset(size.width * 0.25, size.height - 60),
+    _drawLabel(canvas, '${_label(l, "evaporation")} ↑', Offset(size.width * 0.25, size.height - 60),
         fontSize: 9, color: _blue);
 
     // Cloud
@@ -371,7 +464,7 @@ class _DiagramPainter extends CustomPainter {
     canvas.drawOval(
         Rect.fromCenter(center: Offset(size.width / 2 + 30, 38), width: 50, height: 28),
         cloudPaint);
-    _drawLabel(canvas, 'Cloud', Offset(size.width / 2, 40));
+    _drawLabel(canvas, _label(l, 'cloud'), Offset(size.width / 2, 40));
 
     // Rain arrows (down)
     final rainPaint = Paint()..color = _green..strokeWidth = 2..style = PaintingStyle.stroke;
@@ -379,7 +472,7 @@ class _DiagramPainter extends CustomPainter {
       final x = size.width * 0.55 + i * 20;
       _drawArrow(canvas, Offset(x, 58), Offset(x, size.height - 48), rainPaint);
     }
-    _drawLabel(canvas, '↓ Rain', Offset(size.width * 0.7, 70),
+    _drawLabel(canvas, '↓ ${_label(l, "rain")}', Offset(size.width * 0.7, 70),
         fontSize: 9, color: _green);
   }
 
@@ -463,15 +556,15 @@ class _DiagramPainter extends CustomPainter {
     final arrowPaint = Paint()..color = _green..strokeWidth = 1.5..style = PaintingStyle.stroke;
     // Heart label
     _drawArrow(canvas, Offset(cx + 50, 70), Offset(cx + 5, 70), arrowPaint);
-    _drawLabel(canvas, 'Heart', Offset(cx + 70, 70), fontSize: 9, color: _green, center: false);
+    _drawLabel(canvas, _label(l, 'heart'), Offset(cx + 70, 70), fontSize: 9, color: _green, center: false);
 
     // Brain label
     _drawArrow(canvas, Offset(cx - 50, 25), Offset(cx - 17, 28), arrowPaint);
-    _drawLabel(canvas, 'Brain', Offset(cx - 80, 25), fontSize: 9, color: _green, center: false);
+    _drawLabel(canvas, _label(l, 'brain'), Offset(cx - 80, 25), fontSize: 9, color: _green, center: false);
 
     // Stomach label
     _drawArrow(canvas, Offset(cx + 50, 95), Offset(cx + 5, 95), arrowPaint);
-    _drawLabel(canvas, 'Stomach', Offset(cx + 55, 95), fontSize: 9, color: _green, center: false);
+    _drawLabel(canvas, _label(l, 'stomach'), Offset(cx + 55, 95), fontSize: 9, color: _green, center: false);
   }
 
   // ─── Solar System ───
@@ -486,21 +579,25 @@ class _DiagramPainter extends CustomPainter {
     // Sun
     canvas.drawCircle(Offset(cx, cy), 12,
         Paint()..color = _yellow..style = PaintingStyle.fill);
-    _drawLabel(canvas, 'Sun', Offset(cx, cy + 20), fontSize: 8, color: _yellow);
+    _drawLabel(canvas, _label(l, 'sun'), Offset(cx, cy + 20), fontSize: 8, color: _yellow);
 
     // Planets
-    const planets = ['Me', 'Ve', 'Ea', 'Ma', 'Ju', 'Sa'];
+    const planetsKey = ['mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn'];
     final colors = [Colors.grey, _yellow, _blue, _red, Colors.orange, _green];
-    for (var i = 0; i < planets.length; i++) {
+    final descLower = description.toLowerCase();
+    for (var i = 0; i < planetsKey.length; i++) {
       final radius = 28.0 + i * 14;
+      final isHighlighted = descLower.contains(planetsKey[i]);
+      orbitPaint.strokeWidth = isHighlighted ? 2.5 : 1.0;
       canvas.drawCircle(Offset(cx, cy), radius, orbitPaint);
 
       final angle = -pi / 4 + i * 0.9;
       final px = cx + radius * cos(angle);
       final py = cy + radius * sin(angle);
+      final pColor = isHighlighted ? colors[i] : colors[i].withOpacity(0.6);
       canvas.drawCircle(
-          Offset(px, py), 4, Paint()..color = colors[i]..style = PaintingStyle.fill);
-      _drawLabel(canvas, planets[i], Offset(px, py - 10), fontSize: 7, color: colors[i]);
+          Offset(px, py), isHighlighted ? 6 : 4, Paint()..color = pColor..style = PaintingStyle.fill);
+      _drawLabel(canvas, _label(l, planetsKey[i]), Offset(px, py - (isHighlighted ? 12 : 10)), fontSize: isHighlighted ? 9 : 7, color: pColor);
     }
   }
 
@@ -517,7 +614,7 @@ class _DiagramPainter extends CustomPainter {
     final batX = m + 40;
     canvas.drawLine(Offset(batX, 30), Offset(batX, 15), paint..strokeWidth = 3);
     canvas.drawLine(Offset(batX + 12, 30), Offset(batX + 12, 20), paint..strokeWidth = 1.5);
-    _drawLabel(canvas, 'Battery', Offset(batX + 6, 8), fontSize: 9);
+    _drawLabel(canvas, _label(l, 'battery'), Offset(batX + 6, 8), fontSize: 9);
     paint.strokeWidth = 2;
 
     // Resistor (top-right) - zigzag
@@ -528,20 +625,20 @@ class _DiagramPainter extends CustomPainter {
     }
     path.lineTo(resX + 70, 30);
     canvas.drawPath(path, paint);
-    _drawLabel(canvas, 'Resistor', Offset(resX + 35, 50), fontSize: 9);
+    _drawLabel(canvas, _label(l, 'resistor'), Offset(resX + 35, 50), fontSize: 9);
 
     // Bulb (bottom)
     final bulbX = size.width / 2;
     final bulbY = size.height - 20.0;
     canvas.drawCircle(Offset(bulbX, bulbY), 12, paint);
     canvas.drawLine(Offset(bulbX - 6, bulbY + 6), Offset(bulbX + 6, bulbY - 6), paint);
-    _drawLabel(canvas, 'Bulb', Offset(bulbX, bulbY + 20), fontSize: 9);
+    _drawLabel(canvas, _label(l, 'bulb'), Offset(bulbX, bulbY + 20), fontSize: 9);
 
     // Switch (left side)
     final swY = size.height / 2;
     canvas.drawCircle(Offset(m, swY), 4, paint);
     canvas.drawLine(Offset(m, swY), Offset(m + 20, swY - 15), paint);
-    _drawLabel(canvas, 'Switch', Offset(m + 25, swY - 5), fontSize: 9, center: false);
+    _drawLabel(canvas, _label(l, 'switch'), Offset(m + 25, swY - 5), fontSize: 9, center: false);
   }
 
   // ─── Bar Chart ───
@@ -579,7 +676,7 @@ class _DiagramPainter extends CustomPainter {
     int denominator = 4;
 
     // Try to parse fraction from description
-    final match = RegExp(r'(\d+)\s*(?:/|out of)\s*(\d+)').firstMatch(description.toLowerCase());
+    final match = RegExp(r'(\d+)[\s/\\|a-zA-Z]+(\d+)').firstMatch(description);
     if (match != null) {
       numerator = int.tryParse(match.group(1) ?? '3') ?? 3;
       denominator = int.tryParse(match.group(2) ?? '4') ?? 4;
@@ -613,8 +710,7 @@ class _DiagramPainter extends CustomPainter {
         canvas.drawLine(Offset(rect.left + i * partW, rect.top), Offset(rect.left + i * partW, rect.bottom), paint);
       }
     }
-    
-    _drawLabel(canvas, '$numerator out of $denominator parts', Offset(cx, cy + 30), fontSize: 12, color: kTextPrimary);
+    _drawLabel(canvas, '$numerator / $denominator', Offset(cx, cy + 30), fontSize: 14, color: kTextPrimary);
   }
 
   // ─── Cell Diagram ───
@@ -637,12 +733,11 @@ class _DiagramPainter extends CustomPainter {
       canvas.drawOval(cellRect, fillPaint);
       canvas.drawOval(cellRect, membranePaint);
     }
-    _drawLabel(canvas, 'Cell Membrane', Offset(cx, cy - 80), fontSize: 9, color: membraneColor);
+    _drawLabel(canvas, _label(l, 'cell_membrane'), Offset(cx, cy - 80), fontSize: 9, color: membraneColor);
 
-    // Nucleus
     canvas.drawCircle(Offset(cx - 20, cy - 10), 20, Paint()..color = _yellow..style = PaintingStyle.fill);
     canvas.drawCircle(Offset(cx - 20, cy - 10), 20, Paint()..color = Colors.orange..style = PaintingStyle.stroke..strokeWidth = 2);
-    _drawLabel(canvas, 'Nucleus', Offset(cx - 20, cy - 10), fontSize: 9);
+    _drawLabel(canvas, _label(l, 'nucleus'), Offset(cx - 20, cy - 10), fontSize: 9);
 
     // Mitochondria
     final mitoPaint = Paint()..color = _red.withOpacity(0.7)..style = PaintingStyle.fill;
@@ -650,7 +745,7 @@ class _DiagramPainter extends CustomPainter {
     final mitoRect2 = Rect.fromCenter(center: Offset(cx + 30, cy + 20), width: 15, height: 8);
     canvas.drawRRect(RRect.fromRectAndRadius(mitoRect1, const Radius.circular(4)), mitoPaint);
     canvas.drawRRect(RRect.fromRectAndRadius(mitoRect2, const Radius.circular(4)), mitoPaint);
-    _drawLabel(canvas, 'Mitochondria', Offset(cx + 40, cy + 35), fontSize: 9, color: _red);
+    _drawLabel(canvas, _label(l, 'mitochondria'), Offset(cx + 40, cy + 35), fontSize: 9, color: _red);
 
     // Cytoplasm
     final cytoPaint = Paint()..color = membraneColor.withOpacity(0.4)..style = PaintingStyle.fill;
@@ -663,7 +758,7 @@ class _DiagramPainter extends CustomPainter {
         canvas.drawCircle(Offset(dx, dy), 1.5, cytoPaint);
       }
     }
-    _drawLabel(canvas, 'Cytoplasm', Offset(cx - 50, cy + 30), fontSize: 9, color: membraneColor);
+    _drawLabel(canvas, _label(l, 'cytoplasm'), Offset(cx - 50, cy + 30), fontSize: 9, color: membraneColor);
   }
 }
 

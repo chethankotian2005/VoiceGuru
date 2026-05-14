@@ -8,6 +8,9 @@ import 'onboarding_screen.dart';
 import 'share_screen.dart';
 import '../l10n/app_strings.dart';
 import '../services/api_service.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -23,7 +26,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late String _selectedLanguage;
   late TextEditingController _parentPhoneController;
   bool _reportSent = false;
-  bool _isSendingReport = false;
+  bool _isSending = false;
 
   final _formKey = GlobalKey<FormState>();
 
@@ -103,41 +106,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
-    setState(() => _isSendingReport = true);
+    setState(() => _isSending = true);
 
     final langProv = context.read<LanguageProvider>();
-    final api = ApiService(baseUrl: baseUrl);
+    final childId = langProv.childId;
+    final childName = langProv.childName;
+    final lang = langProv.language;
 
     try {
-      final response = await api.sendParentReport(
-        childId: langProv.childId,
-        childName: langProv.childName,
-        parentPhone: phone,
-        apiKey: "twilio_managed", // Dummy value for model compatibility
-        language: langProv.language,
-      );
-
-      if (response['sent'] == true) {
+      final response = await http.post(
+        Uri.parse('$baseUrl/send_parent_report'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'child_id': childId,
+          'child_name': childName,
+          'parent_phone': phone,
+          'callmebot_api_key': 'twilio_managed',
+          'language': lang,
+        }),
+      ).timeout(const Duration(seconds: 30));
+      
+      final data = jsonDecode(response.body);
+      
+      if (data['sent'] == true) {
+        // Twilio sent successfully
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('parent_phone', phone);
-        
-        setState(() => _reportSent = true);
-        Future.delayed(const Duration(seconds: 5), () {
-          if (mounted) setState(() => _reportSent = false);
-        });
-      } else {
+
         if (!mounted) return;
+        setState(() {
+          _reportSent = true;
+          _isSending = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response['message'] ?? 'Failed to send report')),
+          const SnackBar(
+            content: Row(children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Report sent to WhatsApp! ✓'),
+            ]),
+            backgroundColor: Color(0xFF25D366),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else if (data['fallback_url'] != null) {
+        // Twilio not configured — open WhatsApp directly
+        if (!mounted) return;
+        setState(() => _isSending = false);
+        
+        final url = Uri.parse(data['fallback_url']);
+        if (await canLaunchUrl(url)) {
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+          if (mounted) setState(() => _reportSent = true);
+        }
+      } else {
+        // Actual error
+        if (!mounted) return;
+        setState(() => _isSending = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed: ${data['error'] ?? 'Unknown error'}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } catch (e) {
       if (!mounted) return;
+      setState(() => _isSending = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error connecting to server')),
+        const SnackBar(
+          content: Text('Network error — check connection'),
+          backgroundColor: Colors.red,
+        ),
       );
-    } finally {
-      if (mounted) setState(() => _isSendingReport = false);
     }
   }
 
@@ -512,18 +553,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
-                        height: 48,
                         child: ElevatedButton.icon(
-                          onPressed: _isSendingReport ? null : _sendTestReport,
-                          icon: _isSendingReport 
-                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : const Icon(Icons.send_rounded, size: 18),
-                          label: Text(_isSendingReport ? 'Sending...' : 'Send Weekly Report Now'),
+                          onPressed: _isSending ? null : _sendTestReport,
+                          icon: _isSending
+                            ? const SizedBox(
+                                width: 16, height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.send, color: Colors.white),
+                          label: Text(_isSending 
+                            ? 'Sending...' : 'Send Report Now'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF25D366),
+                            backgroundColor: _isSending 
+                              ? Colors.grey : const Color(0xFF25D366),
                             foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                       ),

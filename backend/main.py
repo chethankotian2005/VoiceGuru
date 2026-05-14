@@ -433,29 +433,82 @@ async def create_user(payload: CreateUserRequest):
         return {"status": "error", "message": str(e)}
 
 @app.post("/send_parent_report")
-async def api_send_parent_report(payload: ParentReportRequest):
-    # Save the contact info first so it's persisted for future triggers
-    from firebase_logger import save_user_profile, get_user_profile
-    profile = await get_user_profile(payload.child_id)
-    if profile:
-        await save_user_profile(
-            child_id=payload.child_id,
-            name=profile.get("name", "Student"),
-            grade=profile.get("grade", 6),
-            board=profile.get("board", "Karnataka State Board"),
-            language=profile.get("language", "english"),
-            mascot=profile.get("mascot", "owl"),
-            parent_phone=payload.parent_phone,
-            callmebot_api_key=payload.callmebot_api_key
-        )
+async def send_parent_report(request: ParentReportRequest):
+    try:
+        # Save the contact info first so it's persisted for future triggers
+        from firebase_logger import save_user_profile, get_user_profile
+        profile = await get_user_profile(request.child_id)
+        if profile:
+            await save_user_profile(
+                child_id=request.child_id,
+                name=profile.get("name", "Student"),
+                grade=profile.get("grade", 6),
+                board=profile.get("board", "Karnataka State Board"),
+                language=profile.get("language", "english"),
+                mascot=profile.get("mascot", "owl"),
+                parent_phone=request.parent_phone,
+                callmebot_api_key=request.callmebot_api_key
+            )
 
-    success = await send_whatsapp_report(
-        phone=payload.parent_phone,
-        child_name=payload.child_name,
-        child_id=payload.child_id,
-        language=payload.language
-    )
-    return {"sent": success, "message": "Report delivered to parent" if success else "Failed to deliver report"}
+        # Step 1: Validate inputs
+        if not request.parent_phone:
+            return {"sent": False, 
+              "error": "Phone number is required"}
+        
+        # Normalize phone: ensure it starts with +
+        phone = request.parent_phone.strip()
+        if not phone.startswith('+'):
+            phone = '+91' + phone.lstrip('0')
+        
+        # Step 2: Generate report text
+        report_text = await generate_parent_report(
+            request.child_id,
+            request.child_name,
+            request.language
+        )
+        
+        # Step 3: Send via Twilio WhatsApp
+        # Check if Twilio credentials exist
+        account_sid = os.getenv('TWILIO_ACCOUNT_SID')
+        auth_token = os.getenv('TWILIO_AUTH_TOKEN')
+        from_number = os.getenv('TWILIO_WHATSAPP_FROM', 
+          'whatsapp:+14155238886')  # Twilio sandbox default
+        
+        if not account_sid or not auth_token:
+            # Fallback: return the message text so 
+            # frontend can open WhatsApp manually
+            encoded = urllib.parse.quote(report_text)
+            whatsapp_url = f"https://wa.me/{phone.replace('+','')}?text={encoded}"
+            return {
+                "sent": False,
+                "fallback_url": whatsapp_url,
+                "report_text": report_text,
+                "error": "Twilio not configured"
+            }
+        
+        from twilio.rest import Client
+        client = Client(account_sid, auth_token)
+        
+        message = client.messages.create(
+            from_=from_number,
+            to=f'whatsapp:{phone}',
+            body=report_text
+        )
+        
+        return {
+            "sent": True,
+            "message_sid": message.sid,
+            "report_text": report_text,
+        }
+        
+    except Exception as e:
+        import traceback
+        print(f"WhatsApp send error: {traceback.format_exc()}")
+        return {
+            "sent": False, 
+            "error": str(e),
+            "report_text": report_text if 'report_text' in locals() else ""
+        }
 
 @app.post("/trigger_weekly_reports")
 async def trigger_weekly_reports():
