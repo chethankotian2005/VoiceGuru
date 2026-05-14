@@ -1603,7 +1603,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
               child: Row(
                 children: [
-                  if (_tts.isPlaying && _currentlyPlayingMessageId == msg.id)
+                  if (_currentlyPlayingMessageId == msg.id)
                     TextButton.icon(
                       onPressed: () async {
                         await _tts.stop();
