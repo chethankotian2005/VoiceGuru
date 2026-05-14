@@ -221,6 +221,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _speakingLanguage = context.read<LanguageProvider>().language;
     _api = ApiService(baseUrl: widget.backendBaseUrl);
     _tts = TtsService(baseUrl: widget.backendBaseUrl);
+    _tts.onPlaybackComplete = () {
+      if (mounted) {
+        setState(() => _currentlyPlayingMessageId = null);
+      }
+    };
     _tts.initialize();
     _voice = VoiceService();
     _voice.setLanguage(context.read<LanguageProvider>().language);
@@ -378,12 +383,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _playSound('chime');
       _scrollToBottom();
 
-      // Auto speak the response
-      unawaited(_speak(result['explanation']?.toString() ?? '').then((_) {
-        if (mounted && _currentlyPlayingMessageId == newId) {
-          setState(() => _currentlyPlayingMessageId = null);
-        }
-      }));
+      // Auto speak the response — completion handled by _tts.onPlaybackComplete
+      unawaited(_speak(result['explanation']?.toString() ?? ''));
 
       // Refresh progress after successful answer
       _fetchProgress();
@@ -520,11 +521,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       });
       _scrollToBottom();
       
-      unawaited(_speak(result['explanation']?.toString() ?? '').then((_) {
-        if (mounted && _currentlyPlayingMessageId == newId) {
-          setState(() => _currentlyPlayingMessageId = null);
-        }
-      }));
+      // Speak — completion handled by _tts.onPlaybackComplete
+      unawaited(_speak(result['explanation']?.toString() ?? ''));
 
       _fetchProgress();
     } catch (e) {
@@ -589,11 +587,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       });
       _scrollToBottom();
       
-      unawaited(_speak(result['simplified_explanation']?.toString() ?? 'Could not simplify right now.').then((_) {
-        if (mounted && _currentlyPlayingMessageId == newId) {
-          setState(() => _currentlyPlayingMessageId = null);
-        }
-      }));
+      // Speak — completion handled by _tts.onPlaybackComplete
+      unawaited(_speak(result['simplified_explanation']?.toString() ?? 'Could not simplify right now.'));
     } catch (_) {
       setState(() {
         _messages.removeLast();
@@ -1624,11 +1619,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         }
                         if (!mounted) return;
                         setState(() => _currentlyPlayingMessageId = msg.id);
-                        unawaited(_speak(msg.text).then((_) {
-                          if (mounted && _currentlyPlayingMessageId == msg.id) {
-                            setState(() => _currentlyPlayingMessageId = null);
-                          }
-                        }));
+                        // Speak — completion handled by _tts.onPlaybackComplete
+                        unawaited(_speak(msg.text));
                       },
                       icon: const Icon(Icons.volume_up_rounded, size: 18),
                       label: Text(AppStrings.get('listen', lang),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -15,6 +16,9 @@ class TtsService {
   bool get isPlaying => _isPlaying;
   String? _lastTempFile;
 
+  /// Called when playback finishes naturally (not when stopped manually).
+  VoidCallback? onPlaybackComplete;
+
   final Map<String, String> _ttsLanguageMap = {
     'kannada': 'kn-IN',
     'hindi': 'hi-IN',
@@ -28,8 +32,18 @@ class TtsService {
     await _flutterTts.setVolume(1.0);
     await _flutterTts.setSpeechRate(0.45);
     await _flutterTts.setPitch(1.1);
+
+    // Set up completion handlers ONCE (not per speak() call)
     _flutterTts.setCompletionHandler(() {
       _isPlaying = false;
+      onPlaybackComplete?.call();
+    });
+
+    _player.playerStateStream.listen((state) {
+      if (state.processingState == ProcessingState.completed) {
+        _isPlaying = false;
+        onPlaybackComplete?.call();
+      }
     });
   }
 
@@ -69,11 +83,7 @@ class TtsService {
             _lastTempFile = filePath;
 
             await _player.setFilePath(filePath);
-            _player.playerStateStream.listen((state) {
-              if (state.processingState == ProcessingState.completed) {
-                _isPlaying = false;
-              }
-            });
+            // Completion is handled by the listener set up in initialize()
             await _player.play();
             return;
           }
@@ -84,6 +94,7 @@ class TtsService {
     }
 
     // Fallback: on-device flutter_tts
+    // Completion is handled by the handler set up in initialize()
     final langCode = _ttsLanguageMap[language] ?? 'en-IN';
     await _flutterTts.setLanguage(langCode);
     await _flutterTts.speak(text);
@@ -103,6 +114,8 @@ class TtsService {
     _isPlaying = false;
     await _player.stop();
     await _flutterTts.stop();
+    // NOTE: onPlaybackComplete is NOT called on manual stop —
+    // the chat screen handles that separately via setState.
   }
 
   Future<void> dispose() async {
